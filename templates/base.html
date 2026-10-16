@@ -37,7 +37,7 @@
   {% block footer %}{% if request.lab %}
   <footer class="sitefoot"><div class="wrap">
     <span>{{ request.lab.name }}{% if request.lab.address_line %} · {{ request.lab.address_line }}{% endif %}{% if request.lab.phone %} · Call center <a href="tel:{{ request.lab.phone|cut:' '|cut:'('|cut:')'|cut:'-' }}">{{ request.lab.phone }}</a>{% endif %}</span>
-    <a href="https://compile.cl/privacidad" target="_blank" rel="noopener">Política de privacidad</a>
+    <span class="foot-links"><a href="https://compile.cl/privacidad" target="_blank" rel="noopener">Política de privacidad</a> · Desarrollado por <a href="https://compile.cl" target="_blank" rel="noopener">Compile</a></span>
   </div></footer>
   {% endif %}{% endblock %}
 </body>
