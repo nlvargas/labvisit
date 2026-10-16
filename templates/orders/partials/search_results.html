@@ -1,0 +1,20 @@
+{% if suggestions %}
+<ul class="results" role="listbox">
+  {% for s in suggestions %}
+  <li>
+    {% if s.selected %}
+      <span class="result is-added"><span class="name">{{ s.exam.name }}</span><span class="muted small">Ya está en tu lista</span></span>
+    {% else %}
+      <button type="button" class="result" role="option" data-add-exam
+              hx-post="{% url 'add_exam' order.public_id s.exam.pk %}" hx-target="#lines" hx-swap="outerHTML">
+        <span class="name">{{ s.exam.name }}</span>
+        {% if s.alias %}<span class="muted small">también «{{ s.alias }}»</span>{% endif %}
+        <span class="add">Agregar</span>
+      </button>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% elif q %}
+<p class="muted small">No encontramos «{{ q }}». Prueba con otro nombre o abreviatura.</p>
+{% endif %}

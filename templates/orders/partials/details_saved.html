@@ -1,0 +1,3 @@
+{% if order.out_of_range or form.address.errors %}
+  <p class="warn" data-out-of-range>{% if form.address.errors %}{{ form.address.errors.0 }}{% else %}Por ahora no llegamos a esa dirección: está a más de {{ order.lab.max_visit_km|floatformat:"0" }} km.{% endif %}</p>
+{% endif %}

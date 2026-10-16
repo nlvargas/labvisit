@@ -1,0 +1,23 @@
+{% load money %}
+<div id="price"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% if quote %}
+  <table class="quote">
+    <tbody>
+      {% for line in quote.lines %}
+      <tr><td>{{ line.exam.name }}</td><td class="num">{% if line.amount_clp is not None %}{{ line.amount_clp|clp }}{% else %}A confirmar{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="subtotal"><td>Visita a domicilio{% if order.distance_km is not None %} ({{ order.distance_km|floatformat:1 }} km){% endif %}</td><td class="num">{{ quote.visit_fee_clp|clp }}</td></tr>
+      <tr><th>Total</th><th class="num">{{ quote.total_clp|clp }}</th></tr>
+    </tfoot>
+  </table>
+  {% if quote.missing_prices %}<p class="muted small">Algunos precios los confirma el laboratorio.</p>{% endif %}
+  {% endif %}
+  {% if selected_count %}
+    <a class="btn primary" href="{% url 'schedule' order.public_id %}">Elegir horario</a>
+  {% else %}
+    <button class="btn primary" disabled>Elegir horario</button>
+    <p class="muted small center">Marca al menos un examen para continuar.</p>
+  {% endif %}
+</div>

@@ -1,0 +1,14 @@
+<fieldset class="field" data-coverage data-isapre-ids="{{ form.isapre_ids|join:',' }}">
+  <legend class="small strong">{{ form.coverage.label }}</legend>
+  <div class="choices">
+    {% for radio in form.coverage %}
+      <label class="choice">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>
+    {% endfor %}
+  </div>
+  {% if form.coverage.errors %}<p class="error small">Elige tu sistema previsional.</p>{% endif %}
+</fieldset>
+<label class="field" data-isapre-field>
+  <span class="small strong">{{ form.isapre.label }}</span>
+  {{ form.isapre }}
+  {% if form.isapre.errors %}<span class="error small">{{ form.isapre.errors.0 }}</span>{% endif %}
+</label>

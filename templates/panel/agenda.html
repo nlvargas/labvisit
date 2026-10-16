@@ -1,0 +1,53 @@
+{% extends "panel/base.html" %}
+{% load money %}
+{% block panel %}
+<div class="agenda-head">
+  <div>
+    <h1>Semana del {{ week_label }}</h1>
+    {% if pending_count %}<p class="muted small">{{ pending_count }} visita{{ pending_count|pluralize }} por confirmar.</p>{% endif %}
+  </div>
+  <nav class="week-nav">
+    <a class="chip" href="?semana={{ prev_week }}" aria-label="Semana anterior">&larr;</a>
+    {% if not this_week %}<a class="chip" href="{% url 'panel_agenda' %}">Hoy</a>{% endif %}
+    <a class="chip" href="?semana={{ next_week }}" aria-label="Semana siguiente">&rarr;</a>
+  </nav>
+</div>
+
+<div class="agenda">
+  {% for day in days %}
+  <section class="agenda-day{% if day.is_today %} today{% endif %}">
+    <h2>{{ day.label }}</h2>
+    {% for order in day.orders %}
+      <a class="visit visit-{{ order.visit_status }}" href="{% url 'panel_order' order.public_id %}">
+        <span class="visit-time">{{ order.slot_start|time:"H:i" }}</span>
+        <span class="visit-main">
+          <strong>{{ order.patient_name|default:"Paciente sin nombre" }}</strong>
+          <span class="small muted">{{ order.address|truncatechars:36 }}</span>
+          <span class="small muted">{% with n=order.exam_names|length %}{% if n == 1 %}1 examen{% else %}{{ n }} exámenes{% endif %}{% endwith %}{% if order.total_clp %} · {{ order.total_clp|clp }}{% endif %}{% if order.channel == "whatsapp" %} · WhatsApp{% endif %}</span>
+        </span>
+        <span class="badge badge-{{ order.visit_status }}">{{ order.get_visit_status_display }}</span>
+      </a>
+    {% empty %}
+      <p class="muted small">Sin visitas.</p>
+    {% endfor %}
+  </section>
+  {% endfor %}
+</div>
+
+{% if unbooked %}
+<section class="card">
+  <h2>Cotizaciones sin hora</h2>
+  <p class="muted small">Pacientes que cotizaron en los últimos 14 días y no eligieron hora. Puedes contactarlos para agendar.</p>
+  {% for order in unbooked %}
+    <a class="visit" href="{% url 'panel_order' order.public_id %}">
+      <span class="visit-time">{{ order.created_at|date:"j/n" }}</span>
+      <span class="visit-main">
+        <strong>{{ order.patient_name|default:"Paciente sin nombre" }}</strong>
+        <span class="small muted">{{ order.contact_phone|default:"Sin teléfono" }} · {{ order.address|truncatechars:40 }}</span>
+      </span>
+      {% if order.total_clp %}<span class="small">{{ order.total_clp|clp }}</span>{% endif %}
+    </a>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

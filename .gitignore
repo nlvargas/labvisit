@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+db.sqlite3*
+media/
+staticfiles/
+.DS_Store
+zappa_settings.json
+production.env.json
+.venv-deploy/

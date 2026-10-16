@@ -1,0 +1,44 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% if request.lab %}{{ request.lab.name }} · {% endif %}Toma de muestras a domicilio{% endblock %}</title>
+  {% with lab=request.lab %}
+  {% if lab.font_query %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ lab.font_query }}&display=swap">
+  {% endif %}
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% if lab %}<style>:root { --brand: {{ lab.brand_color }}; --font: {{ lab.font_family|safe }}; --radius: {{ lab.radius }}; --radius-sm: {{ lab.radius_small }}; --pill: {{ lab.pill }}; }</style>{% endif %}
+  {% endwith %}
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  {% block header %}{% with lab=request.lab %}{% if lab %}
+  <div class="topbar">{% if lab.results_url %}<div class="wrap">
+    <span></span>
+    <a class="tag" href="{{ lab.results_url }}" target="_blank" rel="noopener">Resultado exámenes</a>
+  </div>{% endif %}</div>
+  <header class="brandbar"><div class="wrap">
+    <a class="brand" href="{% url 'start' %}">
+      {% if lab.logo %}<img src="{{ lab.logo.url }}" alt="{{ lab.name }}">
+      {% else %}<span class="brand-name">{{ lab.name }}</span>{% if lab.tagline %}<span class="brand-tagline">{{ lab.tagline }}</span>{% endif %}{% endif %}
+    </a>
+    {% if lab.whatsapp_url %}<a class="help" href="{{ lab.whatsapp_url }}" target="_blank" rel="noopener"><strong>¿Dudas con tu orden?</strong>Escríbenos por WhatsApp</a>{% endif %}
+  </div></header>
+  {% endif %}{% endwith %}{% endblock %}
+  {% block hero %}{% endblock %}
+  <main class="page {% block page_class %}{% endblock %}">
+    {% for message in messages %}<p class="notice">{{ message }}</p>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block footer %}{% if request.lab %}
+  <footer class="sitefoot"><div class="wrap">
+    <span>{{ request.lab.name }}{% if request.lab.address_line %} · {{ request.lab.address_line }}{% endif %}{% if request.lab.phone %} · Call center <a href="tel:{{ request.lab.phone|cut:' '|cut:'('|cut:')'|cut:'-' }}">{{ request.lab.phone }}</a>{% endif %}</span>
+    <a href="https://compile.cl/privacidad" target="_blank" rel="noopener">Política de privacidad</a>
+  </div></footer>
+  {% endif %}{% endblock %}
+</body>
+</html>

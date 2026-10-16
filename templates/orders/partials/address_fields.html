@@ -1,0 +1,23 @@
+<div class="field" data-address-field>
+  <label for="{{ form.address.id_for_label }}" class="small strong">{{ form.address.label }}</label>
+  <div class="address-current" data-address-current hidden>
+    <span data-address-text></span>
+    <button type="button" class="link small" data-address-change>Cambiar</button>
+  </div>
+  <div class="address-autocomplete" data-autocomplete-slot></div>
+  {{ form.address }}
+  {{ form.address_place_id }}{{ form.latitude }}{{ form.longitude }}
+  <div class="address-map" data-address-map hidden></div>
+  <p class="muted small" data-map-hint hidden>Si el pin no quedó justo en tu casa, arrástralo.</p>
+  {% if form.address.errors %}<p class="error small">{{ form.address.errors.0 }}</p>{% endif %}
+</div>
+<div class="field-row">
+  <div class="field">
+    <label for="{{ form.apartment.id_for_label }}" class="small strong">{{ form.apartment.label }} <span class="muted">(si aplica)</span></label>
+    {{ form.apartment }}
+  </div>
+  <div class="field">
+    <label for="{{ form.address_notes.id_for_label }}" class="small strong">{{ form.address_notes.label }} <span class="muted">(opcional)</span></label>
+    {{ form.address_notes }}
+  </div>
+</div>

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static %}
+{% block hero %}
+<section class="hero"><div class="wrap">
+  <h1>Toma de muestras a domicilio</h1>
+  <p>Sube tu orden médica, revisa el precio y elige la hora. Te visitamos en tu casa.</p>
+</div></section>
+{% endblock %}
+{% block content %}
+{% include "orders/partials/steps.html" with current=1 %}
+<section class="card">
+  <h2>Sube tu orden médica</h2>
+  <p class="muted">Una foto o PDF de la orden. Leemos los exámenes y te mostramos el precio.</p>
+
+  <form method="post" enctype="multipart/form-data" class="upload">
+    {% csrf_token %}
+    <label class="dropzone" data-dropzone>
+      <input type="file" name="file" accept="image/*,application/pdf" required>
+      <span class="dropzone-title" data-title>Arrastra tu orden aquí, toma una foto o elige un archivo</span>
+      <span class="muted small">JPG, PNG, HEIC o PDF, hasta 10 MB</span>
+      <span class="filename small" data-filename></span>
+    </label>
+    <p class="error" data-error {% if not form.file.errors %}hidden{% endif %}>{{ form.file.errors.0 }}</p>
+    <button type="submit" class="btn primary" data-submit>Leer mi orden</button>
+  </form>
+</section>
+
+<form method="post" action="{% url 'start_manual' %}" class="alt">
+  {% csrf_token %}
+  <button type="submit" class="link">No tengo la orden a mano, quiero elegir los exámenes</button>
+</form>
+<script src="{% static 'js/upload.js' %}" defer></script>
+{% endblock %}

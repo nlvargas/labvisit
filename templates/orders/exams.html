@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+{% include "orders/partials/steps.html" with current=3 %}
+<section class="card">
+  <h1>Revisa tus exámenes</h1>
+  {% if order.is_reading %}
+    <p class="notice">Aún estamos leyendo tu orden. <a href="">Actualizar</a></p>
+  {% elif order.status == "failed" %}
+    <p class="notice">No pudimos leer tu orden. Busca abajo los exámenes que necesitas.</p>
+  {% elif order.error == "not_medical_order" %}
+    <p class="notice">El archivo no parece una orden médica. Busca abajo los exámenes que necesitas.</p>
+  {% elif order.file %}
+    <p class="muted">Los leímos de tu orden. Compáralos con el papel y corrige lo que haga falta.</p>
+  {% else %}
+    <p class="muted">Busca y agrega los exámenes que te pidieron.</p>
+  {% endif %}
+
+  {% if order.patient_name or order.patient_rut or order.doctor_name %}
+  <dl class="order-meta">
+    {% if order.patient_name %}<div><dt>Paciente</dt><dd>{{ order.patient_name }}</dd></div>{% endif %}
+    {% if order.patient_rut %}<div><dt>RUT</dt><dd>{{ order.patient_rut }}{% if not order.patient_rut_valid %} <span class="warn small">revísalo, no parece válido</span>{% endif %}</dd></div>{% endif %}
+    {% if order.doctor_name %}<div><dt>Médico</dt><dd>{{ order.doctor_name }}</dd></div>{% endif %}
+    {% if order.order_date %}<div><dt>Fecha de la orden</dt><dd>{{ order.order_date }}</dd></div>{% endif %}
+  </dl>
+  {% endif %}
+
+  {% include "orders/partials/lines.html" %}
+
+  <div class="search">
+    <label for="q" class="small strong">Agregar un examen</label>
+    <input id="q" name="q" type="search" placeholder="Ej: glicemia, TSH, orina" autocomplete="off"
+           hx-get="{% url 'search_exams' order.public_id %}" hx-trigger="input changed delay:150ms, search"
+           hx-target="#search-results" hx-sync="this:replace" data-search>
+    <div id="search-results"></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Precio</h2>
+  {% include "orders/partials/price.html" %}
+  <p class="muted small">Con {{ order.coverage_label }}. Visita en {{ order.address }}{% if order.apartment %}, {{ order.apartment }}{% endif %}. <a href="{% url 'order' order.public_id %}">Cambiar</a></p>
+</section>
+<script src="{% static 'js/search.js' %}" defer></script>
+{% endblock %}

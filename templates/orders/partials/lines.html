@@ -1,0 +1,37 @@
+<div id="lines">
+{% if lines %}<p class="lines-hint small muted">Puedes desmarcar los exámenes que no vas a hacerte ahora. <span class="count">{{ selected_count }} de {{ exam_count }} seleccionado{{ selected_count|pluralize }}</span></p>{% endif %}
+<ul class="lines">
+  {% for line in lines %}
+    {% if line.exam %}
+      <li class="line {% if line.selected %}is-on{% elif line.needs_confirmation %}is-ask{% else %}is-off{% endif %}">
+        <button class="check" aria-pressed="{{ line.selected|yesno:'true,false' }}"
+                hx-post="{% url 'toggle_line' order.public_id line.pk %}" hx-target="#lines" hx-swap="outerHTML">
+          <span class="box" aria-hidden="true"></span>
+          <span class="name">{{ line.exam.name }}</span>
+          <span class="action">{% if line.selected %}Quitar{% elif line.needs_confirmation %}Sí, es este{% else %}Incluir{% endif %}</span>
+        </button>
+        {% if line.needs_confirmation %}<span class="source">«{{ line.raw_text }}» ¿es este examen? Márcalo si corresponde.</span>
+        {% elif not line.selected %}<span class="source">No se incluye en esta visita.</span>
+        {% elif line.show_source and line.origin == "inferred" %}<span class="source">leído como «{{ line.raw_text }}»</span>{% endif %}
+        {% if line.needs_confirmation and line.suggestions|length > 1 %}
+          <div class="suggest">
+            <span class="small">¿O era otro?</span>
+            {% for exam in line.suggestions %}{% if exam.pk != line.exam_id %}
+              <button class="chip" hx-post="{% url 'choose_line' order.public_id line.pk exam.pk %}" hx-target="#lines" hx-swap="outerHTML">{{ exam.name }}</button>
+            {% endif %}{% endfor %}
+          </div>
+        {% endif %}
+      </li>
+    {% elif line.raw_text %}
+      <li class="line is-unknown">
+        <span class="name">«{{ line.raw_text }}»</span>
+        <span class="source">{% if line.legible %}No lo encontramos en el catálogo.{% else %}No se lee bien.{% endif %} Búscalo abajo.</span>
+      </li>
+    {% endif %}
+  {% empty %}
+    <li class="line empty muted">Aún no hay exámenes. Búscalos abajo.</li>
+  {% endfor %}
+</ul>
+</div>
+{% if clear_search %}<div id="search-results" hx-swap-oob="innerHTML"></div>{% endif %}
+{% if quote and request.headers.hx_request %}{% include "orders/partials/price.html" with oob=True %}{% endif %}

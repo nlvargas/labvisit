@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+{% include "orders/partials/steps.html" with current=2 %}
+<section class="card">
+  <h2>Tu orden médica</h2>
+  <div id="reading-status">{% include "orders/partials/reading_status.html" %}</div>
+</section>
+
+<form class="card" method="post" action="{% url 'order_details' order.public_id %}"
+      hx-post="{% url 'order_details' order.public_id %}" hx-trigger="change" hx-target="#details-saved" hx-swap="innerHTML"
+      data-details-form>
+  {% csrf_token %}
+  <h1>Previsión y dirección</h1>
+  {% include "orders/partials/details_fields.html" with form=details_form %}
+  <div id="details-saved" class="small" aria-live="polite">{% include "orders/partials/details_saved.html" with form=details_form %}</div>
+  <button type="submit" class="btn primary" data-continue disabled>Continuar</button>
+  <p class="muted small center" data-continue-hint>Completa tu previsión y dirección para continuar.</p>
+</form>
+<script src="{% static 'js/details.js' %}" defer></script>
+<script src="{% static 'js/address.js' %}" defer></script>
+{% if maps_key %}
+<div hidden data-maps data-key="{{ maps_key }}" data-map-id="{{ maps_map_id }}" data-lab-lat="{{ lab_lat|default_if_none:''|stringformat:'s' }}" data-lab-lng="{{ lab_lng|default_if_none:''|stringformat:'s' }}"></div>
+{% endif %}
+{% endblock %}

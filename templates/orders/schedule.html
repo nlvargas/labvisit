@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load money %}
+{% block content %}
+{% if not order.is_booked %}{% include "orders/partials/steps.html" with current=4 %}{% endif %}
+<section class="card" id="booking">
+  {% if order.is_booked %}
+    <h1>Visita reservada</h1>
+    <p class="booked-slot">{{ slot_label|capfirst }}</p>
+    <p class="muted">La enfermera llega dentro de ese horario. El laboratorio te contactará al {{ order.contact_phone }} si necesita confirmar algo.</p>
+    {% if fasting_from %}
+    <div class="fasting">
+      <span class="fasting-label">Deja de comer a las</span>
+      <strong>{{ fasting_from }}</strong>
+      <span class="small">Ayuno de {{ prep.fasting_hours }} horas. Puedes tomar agua.</span>
+    </div>
+    {% endif %}
+    <a class="btn primary" href="{% url 'calendar_event' order.public_id %}">Agregar a mi calendario</a>
+    <p class="muted small center">Con {% if fasting_from %}una alarma para empezar el ayuno y {% endif %}otra una hora antes de la visita.</p>
+    <details class="change-slot">
+      <summary>Cambiar hora</summary>
+      {% include "orders/partials/slot_picker.html" %}
+    </details>
+  {% else %}
+    <h1>Elige el horario</h1>
+    {% include "orders/partials/slot_picker.html" %}
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="summary-total">
+    <span>{% with n=quote.lines|length %}{% if n == 1 %}1 examen{% else %}{{ n }} exámenes{% endif %}{% endwith %} y visita a domicilio</span>
+    <strong>{{ quote.total_clp|clp }}</strong>
+  </div>
+  <p class="muted small">Con {{ order.coverage_label }}. Visita en {{ order.address }}{% if order.apartment %}, {{ order.apartment }}{% endif %}. <a href="{% url 'exams' order.public_id %}">Ver detalle o cambiar</a></p>
+  {% if quote.missing_prices %}<p class="muted small">Algunos precios los confirma el laboratorio.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Cómo prepararte</h2>
+  <ul class="prep">
+    {% if prep.fasting_hours %}<li><strong>Ayuno de {{ prep.fasting_hours }} horas.</strong> Puedes tomar agua.</li>
+    {% else %}<li>No necesitas ayuno.</li>{% endif %}
+    {% for text in prep.instructions %}<li>{{ text }}</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

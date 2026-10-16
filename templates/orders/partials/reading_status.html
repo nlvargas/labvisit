@@ -1,0 +1,24 @@
+{% if order.is_reading %}
+<div class="reading-strip" data-reading-state="reading"
+     hx-get="{% url 'order_status' order.public_id %}" hx-trigger="every 2s" hx-target="#reading-status" hx-swap="innerHTML">
+  <span class="mini-spinner" aria-hidden="true"></span>
+  <span id="status-text" data-cycling data-messages="Leyendo tu orden…|Identificando los exámenes…|Buscándolos en el catálogo…|Ya casi está…">Leyendo tu orden…</span>
+  <span class="muted small">Mientras tanto, completa estos datos.</span>
+</div>
+{% elif order.status == "failed" %}
+<div class="reading-strip is-warn" data-reading-state="done">
+  <span>No pudimos leer tu orden. En el siguiente paso puedes agregar los exámenes a mano.</span>
+  <form method="post" action="{% url 'retry_order' order.public_id %}">{% csrf_token %}<button type="submit" class="link small">Intentar leerla de nuevo</button></form>
+</div>
+{% elif order.error == "not_medical_order" %}
+<div class="reading-strip is-warn" data-reading-state="done">
+  <span>El archivo no parece una orden médica. En el siguiente paso puedes agregar los exámenes a mano.</span>
+</div>
+{% elif order.file %}
+<div class="reading-strip is-done" data-reading-state="done">
+  <span class="tick" aria-hidden="true">✓</span>
+  <span>Leímos tu orden. En el siguiente paso revisas los exámenes y ves el precio.</span>
+</div>
+{% else %}
+<div data-reading-state="done"></div>
+{% endif %}

@@ -1,0 +1,35 @@
+{% load static %}
+{% if days %}
+<form method="post" action="{% url 'book' order.public_id %}" class="slot-picker" data-slot-picker>
+  {% csrf_token %}
+  {% if booking_form.slot.errors %}<p class="error small">{{ booking_form.slot.errors.0 }}</p>{% endif %}
+  <fieldset class="field day-tabs" hidden>
+    <legend class="small strong">Día</legend>
+    <div class="choices">
+      {% for day in days %}
+      <label class="choice"><input type="radio" name="day" value="{{ day.date.isoformat }}"{% if forloop.first %} checked{% endif %}><span>{{ day.label }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% for day in days %}
+  <fieldset class="field" data-day="{{ day.date.isoformat }}">
+    <legend class="small strong"><span class="day-name">{{ day.label }}</span><span class="hour-name">Hora</span></legend>
+    <div class="choices">
+      {% for start in day.slots %}
+      <label class="choice"><input type="radio" name="slot" value="{{ start.isoformat }}" required{% if booking_form.slot.value == start.isoformat %} checked{% endif %}><span>{{ start|time:"H:i" }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endfor %}
+  <p class="muted small">La enfermera llega dentro de la hora que elijas. Por ejemplo, 09:00 es entre 09:00 y 10:00.</p>
+  <label class="field">
+    <span class="small strong">{{ booking_form.contact_phone.label }}</span>
+    {{ booking_form.contact_phone }}
+    {% if booking_form.contact_phone.errors %}<span class="error small">{{ booking_form.contact_phone.errors.0 }}</span>{% endif %}
+  </label>
+  <button class="btn primary" type="submit">Reservar visita</button>
+</form>
+<script src="{% static 'js/slots.js' %}" defer></script>
+{% else %}
+<p class="muted">No quedan horas disponibles en los próximos días. El laboratorio te contactará para coordinar.</p>
+{% endif %}

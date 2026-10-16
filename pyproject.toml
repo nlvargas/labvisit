@@ -1,0 +1,23 @@
+[project]
+name = "labvisit"
+version = "0.1.0"
+description = "Online booking for at-home lab sample collection, with automatic medical order reading."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "django>=5.2,<5.3",
+    "django-environ>=0.12",
+    "dj-database-url>=2.3",
+    "psycopg[binary]>=3.2",
+    "rapidfuzz>=3.10",
+    "google-genai>=1.0",
+    "httpx>=0.27",
+    "pillow>=11.0",
+    "whitenoise>=6.8",
+    "django-storages[s3]>=1.14",
+]
+
+[dependency-groups]
+deploy = ["zappa>=0.59"]
+
+[tool.uv]
+package = false

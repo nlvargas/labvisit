@@ -1,0 +1,46 @@
+{
+    "production": {
+        "project_name": "labvisit",
+        "django_settings": "config.settings",
+        "runtime": "python3.12",
+        "aws_region": "sa-east-1",
+        "s3_bucket": "labvisit-zappa-deploys",
+        "memory_size": 1024,
+        "timeout_seconds": 120,
+        "keep_warm": true,
+        "remote_env": "s3://labvisit-zappa-deploys/production.env.json",
+        "exclude": [
+            "*.sqlite3*",
+            ".env",
+            ".git",
+            "*.pyc",
+            "__pycache__",
+            "tests.py",
+            ".venv",
+            ".venv-deploy",
+            "media",
+            "production.env.json",
+            "zappa_settings*.json",
+            "boto3",
+            "botocore",
+            "s3transfer",
+            "pip",
+            "setuptools",
+            "wheel",
+            "*.dist-info/RECORD"
+        ],
+        "events": [
+            {
+                "function": "config.jobs.purge_old_data",
+                "expression": "cron(0 7 * * ? *)"
+            }
+        ],
+        "domain": "*.lab.compile.cl",
+        "certificate_arn": "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID",
+        "endpoint_configuration": [
+            "EDGE"
+        ],
+        "profile_name": "mate",
+        "keep_warm_expression": "rate(4 minutes)"
+    }
+}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ request.lab.name }} · Agenda{% endblock %}
+{% block page_class %}page-wide{% endblock %}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block content %}
+<header class="panel-bar">
+  <a href="{% url 'panel_agenda' %}" class="panel-brand">{{ request.lab.name }}</a>
+  {% if user.is_authenticated %}
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="link small" type="submit">Salir</button></form>
+  {% endif %}
+</header>
+{% block panel %}{% endblock %}
+{% endblock %}

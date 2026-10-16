@@ -1,0 +1,15 @@
+{% extends "panel/base.html" %}
+{% block panel %}
+<section class="card narrow">
+  <h1>Ingresar</h1>
+  <p class="muted">Agenda de visitas a domicilio.</p>
+  <form method="post">
+    {% csrf_token %}
+    {% if form.errors %}<p class="error small">Usuario o contraseña incorrectos.</p>{% endif %}
+    <label class="field"><span class="small strong">Usuario</span><input type="text" name="username" autocomplete="username" required autofocus></label>
+    <label class="field"><span class="small strong">Contraseña</span><input type="password" name="password" autocomplete="current-password" required></label>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="btn primary" type="submit">Ingresar</button>
+  </form>
+</section>
+{% endblock %}
