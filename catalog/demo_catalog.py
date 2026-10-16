@@ -140,5 +140,5 @@ LAB_STYLE = {
 }
 VISIT_FEE = {"visit_base_fee_clp": 18000, "visit_fee_per_km_clp": 500, "max_visit_km": 25}
 
-# placeholder office hours (weekday 0 = Monday); confirm with the lab
-OPENING_HOURS = [(day, "08:00", "17:00") for day in range(5)] + [(5, "08:00", "12:00")]
+# Biodata home visit hours (weekday 0 = Monday)
+OPENING_HOURS = [(day, "07:00", "16:00") for day in range(5)] + [(5, "07:00", "11:00")]
