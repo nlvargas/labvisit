@@ -1,0 +1,7 @@
+<div class="search">
+  <label for="q" class="small strong">Agregar un examen</label>
+  <input id="q" name="q" type="search" placeholder="Ej: glicemia, TSH, orina" autocomplete="off"
+         hx-get="{% url 'search_exams' order.public_id %}" hx-trigger="input changed delay:150ms, search"
+         hx-target="#search-results" hx-sync="this:replace" data-search>
+  <div id="search-results"></div>
+</div>

@@ -45,6 +45,8 @@ class Order(models.Model):
     longitude = models.FloatField(null=True, blank=True)
     distance_km = models.FloatField(null=True, blank=True)
     visit_fee_clp = models.PositiveIntegerField(null=True, blank=True)
+    visit_discount_clp = models.PositiveIntegerField(default=0, help_text="Discount for the booked slot.")
+    service_minutes = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Estimated when booking.")
     patient_name = models.CharField(max_length=160, blank=True)
     patient_rut = models.CharField(max_length=20, blank=True)
     patient_rut_valid = models.BooleanField(default=False)
@@ -85,6 +87,10 @@ class Order(models.Model):
         if self.coverage and self.coverage.kind == "isapre" and self.isapre:
             return f"Isapre {self.isapre}"
         return str(self.coverage) if self.coverage else ""
+
+    @property
+    def is_manual(self):
+        return not self.file and not self.is_reading
 
     @property
     def is_booked(self):

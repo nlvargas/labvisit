@@ -87,16 +87,16 @@ class ConsoleClient:
     def send_buttons(self, to, body, buttons):
         self._record(to, "buttons", body=body, buttons=buttons)
         options = "  ".join(f"[{bid}] {title}" for bid, title in buttons)
-        self.output(f"\n[bot] {body}\n      botones: {options}")
+        self.output(f"\n[bot] {body}\n      buttons: {options}")
 
     def send_list(self, to, body, button_label, rows):
         self._record(to, "list", body=body, rows=rows)
         options = "\n".join(f"      [{row[0]}] {' '.join(row[1:])}" for row in rows)
-        self.output(f"\n[bot] {body}\n      lista ({button_label}):\n{options}")
+        self.output(f"\n[bot] {body}\n      list ({button_label}):\n{options}")
 
     def request_location(self, to, body):
         self._record(to, "location_request", body=body)
-        self.output(f"\n[bot] {body}\n      (pide ubicación: responde /ubicacion lat,lng)")
+        self.output(f"\n[bot] {body}\n      (location requested: reply /location lat,lng)")
 
     def download_media(self, media_id):
         return self.media[media_id]

@@ -126,10 +126,13 @@ gmp-place-autocomplete { width: 100%; margin-top: 6px; color-scheme: light; back
 .change-slot summary { cursor: pointer; color: var(--accent-text); font-size: 14px; }
 label.field { display: block; }
 .slot-picker .choice span { min-width: 64px; text-align: center; }
+.deal-tag { display: block; font-size: 11px; font-weight: 600; color: #1b7a43; line-height: 1.2; }
+.choice.deal span { border-color: #7cc49a; }
+.deal-note { color: #1b7a43; }
 .slot-picker .hour-name { display: none; }
 .slot-picker.tabbed .day-name { display: none; }
 .slot-picker.tabbed .hour-name { display: inline; }
-.page-wide { max-width: 1100px; }
+.page.page-wide { max-width: 1100px; }
 .narrow { max-width: 420px; margin: 40px auto; }
 .panel-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .panel-brand { font-weight: 700; color: var(--ink); text-decoration: none; }
@@ -215,3 +218,15 @@ input[type=password], textarea { width: 100%; padding: 12px; border: 1px solid v
 .fasting { display: flex; flex-direction: column; gap: 2px; margin: 14px 0 0; padding: 14px; border-left: 4px solid var(--brand); background: var(--accent-soft); }
 .fasting-label { font-size: 13px; text-transform: uppercase; letter-spacing: .4px; color: var(--accent-text); font-weight: 600; }
 .fasting strong { font-size: 22px; color: var(--ink); }
+
+.route { list-style: none; margin: 0; padding: 0; }
+.route-stop .visit { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); text-decoration: none; color: inherit; }
+.route-stop.late .visit { border-color: #d98b8b; }
+.route-leg { margin: 6px 0 6px 18px; padding-left: 10px; border-left: 2px dashed var(--line); }
+.route-link { font-weight: 600; margin-left: 4px; }
+.card .badge + h1 { margin-top: 10px; }
+.panel-map { height: 360px; margin: 12px 0; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.facts + .panel-map { height: 260px; }
+.lab-stop { background: var(--bg, #f7f9f9); border-style: dashed !important; }
+.nurse-title { display: flex; align-items: center; gap: 8px; }
+.nurse-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }

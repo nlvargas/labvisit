@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Coverage, Exam, Price
+from .models import Coverage, Exam, Price, SampleContainer
 
 
 class PriceInline(admin.TabularInline):
@@ -17,8 +17,9 @@ class PriceInline(admin.TabularInline):
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
-    list_display = ["name", "lab", "fonasa_code", "sample_type", "fasting_hours", "active"]
-    list_filter = ["lab", "sample_type", "active"]
+    list_display = ["name", "lab", "fonasa_code", "sample_type", "container", "fasting_hours", "active"]
+    list_filter = ["lab", "sample_type", "container", "active"]
+    list_editable = ["container"]
     search_fields = ["name", "synonyms", "fonasa_code"]
     inlines = [PriceInline]
 
@@ -27,3 +28,9 @@ class ExamAdmin(admin.ModelAdmin):
 class CoverageAdmin(admin.ModelAdmin):
     list_display = ["name", "lab", "kind", "position", "active"]
     list_filter = ["lab", "kind"]
+
+
+@admin.register(SampleContainer)
+class SampleContainerAdmin(admin.ModelAdmin):
+    list_display = ["name", "lab", "cap_color", "minutes"]
+    list_filter = ["lab"]

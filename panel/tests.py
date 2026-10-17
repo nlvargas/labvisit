@@ -48,7 +48,7 @@ class PanelTests(TestCase):
                                         visit_fee_clp=18000, contact_phone="+56933334444")
         self.client.force_login(self.staff)
         week = timezone.localdate(order.slot_start).isoformat()
-        response = self.client.get(reverse("panel_agenda") + f"?semana={week}")
+        response = self.client.get(reverse("panel_agenda") + f"?week={week}")
         self.assertContains(response, "Ana Pérez")
         self.assertContains(response, "Por confirmar")
         self.assertContains(response, "1 visita por confirmar")
@@ -78,5 +78,5 @@ class PanelTests(TestCase):
     def test_week_navigation(self):
         self.client.force_login(self.staff)
         next_monday = timezone.localdate() + timedelta(days=7 - timezone.localdate().weekday())
-        response = self.client.get(reverse("panel_agenda") + f"?semana={next_monday.isoformat()}")
+        response = self.client.get(reverse("panel_agenda") + f"?week={next_monday.isoformat()}")
         self.assertContains(response, "Hoy</a>")

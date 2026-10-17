@@ -126,19 +126,22 @@ class Quote:
     visit_fee_clp: int
     total_clp: int
     missing_prices: bool
+    visit_discount_clp: int = 0
 
 
-def build_quote(exams, coverage, visit_fee_clp=0):
+def build_quote(exams, coverage, visit_fee_clp=0, visit_discount_clp=0):
     prices = dict(Price.objects.filter(exam__in=exams, coverage=coverage).values_list("exam_id", "amount_clp"))
     lines = [QuoteLine(exam, prices.get(exam.id)) for exam in exams]
     exams_clp = sum(l.amount_clp for l in lines if l.amount_clp is not None)
     visit_fee = visit_fee_clp or 0
+    discount = min(visit_discount_clp or 0, visit_fee)
     return Quote(
         lines=lines,
         exams_clp=exams_clp,
         visit_fee_clp=visit_fee,
-        total_clp=exams_clp + visit_fee,
+        total_clp=exams_clp + visit_fee - discount,
         missing_prices=any(l.amount_clp is None for l in lines),
+        visit_discount_clp=discount,
     )
 
 

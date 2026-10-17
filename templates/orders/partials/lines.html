@@ -34,4 +34,4 @@
 </ul>
 </div>
 {% if clear_search %}<div id="search-results" hx-swap-oob="innerHTML"></div>{% endif %}
-{% if quote and request.headers.hx_request %}{% include "orders/partials/price.html" with oob=True %}{% endif %}
+{% if quote and request.headers.hx_request and request.headers.x_step != "details" %}{% include "orders/partials/price.html" with oob=True %}{% endif %}

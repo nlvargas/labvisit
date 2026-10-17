@@ -1,7 +1,7 @@
 {% extends "panel/base.html" %}
 {% load money %}
 {% block panel %}
-<p class="small"><a href="{% url 'panel_agenda' %}{% if week %}?semana={{ week }}{% endif %}">&larr; Agenda</a></p>
+<p class="small"><a href="{% url 'panel_agenda' %}{% if week %}?week={{ week }}{% endif %}">&larr; Agenda</a></p>
 
 <section class="card">
   {% if order.is_booked %}
@@ -14,11 +14,12 @@
   <dl class="facts">
     <dt>Paciente</dt><dd>{{ order.patient_name|default:"Sin nombre" }}{% if order.patient_rut %} · {{ order.patient_rut }}{% if not order.patient_rut_valid %} <span class="small error">(RUT no válido)</span>{% endif %}{% endif %}</dd>
     <dt>Teléfono</dt><dd>{% if order.contact_phone %}<a href="tel:{{ order.contact_phone }}">{{ order.contact_phone }}</a>{% if whatsapp_url %} · <a href="{{ whatsapp_url }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}{% else %}Sin teléfono{% endif %}</dd>
-    <dt>Dirección</dt><dd>{{ order.address }}{% if order.apartment %}, {{ order.apartment }}{% endif %}{% if order.address_notes %}<br><span class="small muted">{{ order.address_notes }}</span>{% endif %}{% if maps_url %}<br><a class="small" href="{{ maps_url }}" target="_blank" rel="noopener">Ver en el mapa</a>{% endif %}</dd>
+    <dt>Dirección</dt><dd>{{ order.address }}{% if order.apartment %}, {{ order.apartment }}{% endif %}{% if order.address_notes %}<br><span class="small muted">{{ order.address_notes }}</span>{% endif %}{% if maps_url %}<br><a class="small" href="{{ maps_url }}" target="_blank" rel="noopener">Abrir en Google Maps</a>{% endif %}</dd>
     <dt>Previsión</dt><dd>{{ order.coverage_label|default:"Sin elegir" }}</dd>
     {% if order.doctor_name %}<dt>Médico</dt><dd>{{ order.doctor_name }}{% if order.doctor_rut %} · {{ order.doctor_rut }}{% endif %}</dd>{% endif %}
     <dt>Canal</dt><dd>{{ order.get_channel_display }}{% if order.file %} · <a href="{% url 'panel_order_file' order.public_id %}" target="_blank">Ver orden médica</a>{% endif %}</dd>
   </dl>
+  {% include "panel/partials/map.html" %}
   {% if order.is_booked %}
   <div class="actions">
     {% if order.visit_status == "requested" %}
@@ -47,6 +48,7 @@
     </tbody>
     <tfoot>
       <tr class="subtotal"><td>Visita a domicilio{% if order.distance_km is not None %} ({{ order.distance_km|floatformat:1 }} km){% endif %}</td><td class="num">{{ quote.visit_fee_clp|clp }}</td></tr>
+      {% if quote.visit_discount_clp %}<tr class="subtotal"><td>Descuento por horario en ruta</td><td class="num">−{{ quote.visit_discount_clp|clp }}</td></tr>{% endif %}
       <tr><th>Total</th><th class="num">{{ quote.total_clp|clp }}</th></tr>
     </tfoot>
   </table>

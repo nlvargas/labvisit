@@ -16,6 +16,7 @@ from labs.models import Lab
 from orders import services, slots
 from orders.matching import CatalogIndex, normalize, split_entry
 from orders.models import Order, OrderLine
+from routing import planner
 
 from .client import get_client
 from .models import Conversation, Message
@@ -384,22 +385,21 @@ def _order_url(order):
 
 
 def _ask_day(bot, conversation):
-    days = slots.available_slots(conversation.lab, exclude_order=conversation.order)[:10]
+    days = slots.available_slots(conversation.lab, exclude_order=conversation.order, order=conversation.order)[:10]
     if not days:
         conversation.state = State.DONE
         return bot.text("No quedan horas disponibles en los próximos días. El laboratorio te escribirá para coordinar.\n\n"
                         f"Tu solicitud: {_order_url(conversation.order)}")
     conversation.state = State.AWAIT_DAY
-    rows = [(f"day_{day.date.isoformat()}", day.label,
-             f"{len(day.slots)} hora{'s' if len(day.slots) > 1 else ''} disponible{'s' if len(day.slots) > 1 else ''}")
-            for day in days]
+    rows = [(f"day_{day.date.isoformat()}", day.label, _day_description(day)) for day in days]
     bot.list("¿Qué día quieres la visita?", "Elegir día", rows)
 
 
 def _await_day(bot, conversation, incoming, fresh):
     if incoming.kind == "reply" and incoming.reply_id.startswith("day_"):
         chosen = incoming.reply_id.removeprefix("day_")
-        day = next((d for d in slots.available_slots(conversation.lab, exclude_order=conversation.order)
+        day = next((d for d in slots.available_slots(conversation.lab, exclude_order=conversation.order,
+                                                     order=conversation.order)
                     if d.date.isoformat() == chosen), None)
         if day:
             return _ask_slot(bot, conversation, day)
@@ -407,9 +407,20 @@ def _await_day(bot, conversation, incoming, fresh):
     _ask_day(bot, conversation)
 
 
+def _day_description(day):
+    n = len(day.offers)
+    text = f"{n} hora{'s' if n > 1 else ''} disponible{'s' if n > 1 else ''}"
+    if day.best_discount:
+        text += f", hasta {clp(day.best_discount)} menos"
+    return text
+
+
 def _ask_slot(bot, conversation, day):
     conversation.state = State.AWAIT_SLOT
-    rows = [(f"slot_{start.isoformat()}", slots.hour_label(start)) for start in day.slots[:9]]
+    offers = day.offers[:9]
+    planner.log_offers(conversation.order, offers, Order.Channel.WHATSAPP)
+    rows = [(f"slot_{o.start.isoformat()}", slots.hour_label(o.start),
+             f"{clp(o.discount_clp)} menos en la visita" if o.discount_clp else "") for o in offers]
     rows.append(("other_day", "Otro día"))
     body = f"¿A qué hora el {day.label}? La enfermera llega dentro del rango que elijas."
     bot.list(body, "Elegir hora", rows)
@@ -423,7 +434,9 @@ def _await_slot(bot, conversation, incoming, fresh):
             conversation.state = State.DONE
             logger.info("WhatsApp ...%s: booked %s for order %s", conversation.phone[-4:], start.isoformat(),
                         order.public_id)
-            return bot.text(f"Listo, tu visita quedó reservada para el {slots.slot_label(start)}.\n\n"
+            saving = (f" Tienes {clp(order.visit_discount_clp)} de descuento en la visita por elegir una hora en ruta."
+                      if order.visit_discount_clp else "")
+            return bot.text(f"Listo, tu visita quedó reservada para el {slots.slot_label(start)}.{saving}\n\n"
                             f"Puedes revisar o cambiar tu solicitud aquí: {_order_url(order)}")
         bot.text("Esa hora ya no está disponible. Elige otra.")
     _ask_day(bot, conversation)

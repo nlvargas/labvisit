@@ -9,6 +9,7 @@
     </tbody>
     <tfoot>
       <tr class="subtotal"><td>Visita a domicilio{% if order.distance_km is not None %} ({{ order.distance_km|floatformat:1 }} km){% endif %}</td><td class="num">{{ quote.visit_fee_clp|clp }}</td></tr>
+      {% if quote.visit_discount_clp %}<tr class="subtotal"><td>Descuento por horario en ruta</td><td class="num">−{{ quote.visit_discount_clp|clp }}</td></tr>{% endif %}
       <tr><th>Total</th><th class="num">{{ quote.total_clp|clp }}</th></tr>
     </tfoot>
   </table>

@@ -7,16 +7,16 @@
     {% if pending_count %}<p class="muted small">{{ pending_count }} visita{{ pending_count|pluralize }} por confirmar.</p>{% endif %}
   </div>
   <nav class="week-nav">
-    <a class="chip" href="?semana={{ prev_week }}" aria-label="Semana anterior">&larr;</a>
+    <a class="chip" href="?week={{ prev_week }}" aria-label="Semana anterior">&larr;</a>
     {% if not this_week %}<a class="chip" href="{% url 'panel_agenda' %}">Hoy</a>{% endif %}
-    <a class="chip" href="?semana={{ next_week }}" aria-label="Semana siguiente">&rarr;</a>
+    <a class="chip" href="?week={{ next_week }}" aria-label="Semana siguiente">&rarr;</a>
   </nav>
 </div>
 
 <div class="agenda">
   {% for day in days %}
   <section class="agenda-day{% if day.is_today %} today{% endif %}">
-    <h2>{{ day.label }}</h2>
+    <h2>{{ day.label }}{% if day.has_visits %} <a class="small route-link" href="{% url 'panel_route' day.date.isoformat %}">Ruta</a>{% endif %}</h2>
     {% for order in day.orders %}
       <a class="visit visit-{{ order.visit_status }}" href="{% url 'panel_order' order.public_id %}">
         <span class="visit-time">{{ order.slot_start|time:"H:i" }}</span>

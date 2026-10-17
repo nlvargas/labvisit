@@ -25,16 +25,33 @@ class Lab(models.Model):
     whatsapp_phone_number_id = models.CharField(
         max_length=40, blank=True, db_index=True, help_text="Phone number ID from the WhatsApp Cloud API."
     )
-    email = models.EmailField(blank=True)
     is_active = models.BooleanField(default=True)
     latitude = models.FloatField(null=True, blank=True, help_text="Where home visits start from.")
     longitude = models.FloatField(null=True, blank=True)
     visit_base_fee_clp = models.PositiveIntegerField(default=18000)
     visit_fee_per_km_clp = models.PositiveIntegerField(default=500)
     max_visit_km = models.FloatField(default=25, help_text="Addresses farther than this are out of the coverage area.")
-    visits_per_slot = models.PositiveSmallIntegerField(default=1, help_text="Home visits the lab can do in the same hour.")
     booking_days_ahead = models.PositiveSmallIntegerField(default=7)
     min_notice_hours = models.PositiveSmallIntegerField(default=2, help_text="Earliest a visit can be booked from now.")
+
+    service_base_min = models.PositiveSmallIntegerField(default=10, help_text="Minutes per visit before counting tubes.")
+    service_per_tube_min = models.PositiveSmallIntegerField(default=1, help_text="Minutes per distinct blood tube.")
+    service_container_min = models.PositiveSmallIntegerField(
+        default=5, help_text="Minutes added once when the visit includes a urine or stool sample.")
+    travel_speed_kmh = models.FloatField(default=22, help_text="Average driving speed used to estimate travel times.")
+    detour_factor = models.FloatField(default=1.4, help_text="Road distance divided by straight-line distance.")
+    max_sample_age_min = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text="Longest a sample can wait before reaching the lab. Blank means no limit.")
+    drop_off_min = models.PositiveSmallIntegerField(default=5, help_text="Minutes to leave samples at the lab.")
+    lab_return_ratio = models.FloatField(
+        default=0, help_text="Extra driving minutes accepted per minute the nurse waits at the lab instead of the car. "
+                             "0 never adds optional returns.")
+    min_lab_minutes = models.PositiveSmallIntegerField(
+        default=30, help_text="Shortest wait at the lab that justifies an optional return.")
+    discount_share = models.FloatField(
+        default=1.0, help_text="Share of the route savings given back as a visit discount. 0 turns discounts off.")
+    discount_max_clp = models.PositiveIntegerField(default=5000)
+    discount_min_clp = models.PositiveIntegerField(default=1000, help_text="Smaller discounts are not shown.")
 
     brand_color = models.CharField(max_length=7, default="#1f6f5c", help_text="Main color, for example #5dc1cf.",
                                    validators=[RegexValidator(r"^#[0-9a-fA-F]{6}$", "Use a color like #5dc1cf.")])
@@ -116,3 +133,63 @@ class LabMember(models.Model):
 
     def __str__(self):
         return f"{self.user} @ {self.lab}"
+
+
+def _minutes(value):
+    return value.hour * 60 + value.minute
+
+
+class Nurse(models.Model):
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="nurses")
+    name = models.CharField(max_length=120)
+    phone = models.CharField(max_length=40, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def shift_on(self, day):
+        """Working minutes after midnight on that day, or None when she doesn't work."""
+        blocks = [b for b in self.schedule.all() if b.weekday == day.weekday()]
+        if not blocks:
+            return None
+        start, end = min(_minutes(b.starts) for b in blocks), max(_minutes(b.ends) for b in blocks)
+        for off in self.time_off.filter(date=day):
+            if off.starts is None or off.ends is None:
+                return None
+            off_start, off_end = _minutes(off.starts), _minutes(off.ends)
+            if off_start <= start:
+                start = max(start, off_end)
+            else:
+                end = min(end, off_start)
+        return (start, end) if start < end else None
+
+
+class NurseSchedule(models.Model):
+    nurse = models.ForeignKey(Nurse, on_delete=models.CASCADE, related_name="schedule")
+    weekday = models.PositiveSmallIntegerField(choices=OpeningHours.Weekday.choices)
+    starts = models.TimeField()
+    ends = models.TimeField()
+
+    class Meta:
+        ordering = ["weekday", "starts"]
+
+    def __str__(self):
+        return f"{self.nurse} {self.get_weekday_display()} {self.starts:%H:%M}-{self.ends:%H:%M}"
+
+
+class NurseTimeOff(models.Model):
+    nurse = models.ForeignKey(Nurse, on_delete=models.CASCADE, related_name="time_off")
+    date = models.DateField()
+    starts = models.TimeField(null=True, blank=True, help_text="Leave both times blank for the whole day.")
+    ends = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["date"]
+        verbose_name_plural = "nurse time off"
+
+    def __str__(self):
+        return f"{self.nurse} {self.date}"

@@ -9,11 +9,11 @@ from whatsapp.client import ConsoleClient
 from whatsapp.flow import handle_incoming
 from whatsapp.inbound import Incoming
 
-HELP = """Escribe como si fueras el paciente. Comandos:
-  /foto <ruta>          envía una foto o PDF de la orden
-  /boton <id>           toca un botón o una opción de lista (el id aparece entre corchetes)
-  /ubicacion <lat,lng>  comparte una ubicación, por ejemplo /ubicacion -33.4569,-70.5970
-  /salir"""
+HELP = """Type as the patient. Commands:
+  /photo <path>        sends a photo or PDF of the medical order
+  /button <id>         taps a button or list option (the id is shown in brackets)
+  /location <lat,lng>  shares a location, for example /location -33.4569,-70.5970
+  /quit"""
 
 
 class Command(BaseCommand):
@@ -31,12 +31,12 @@ class Command(BaseCommand):
         self.stdout.write(HELP)
         while True:
             try:
-                line = input("\n[tú] ").strip()
+                line = input("\n[patient] ").strip()
             except (EOFError, KeyboardInterrupt):
                 break
             if not line:
                 continue
-            if line == "/salir":
+            if line == "/quit":
                 break
             incoming = self._to_incoming(line, phone, client)
             if incoming:
@@ -45,19 +45,19 @@ class Command(BaseCommand):
     def _to_incoming(self, line, phone, client):
         base = {"phone_number_id": "", "phone": phone, "wa_id": f"console-{uuid.uuid4()}"}
         command, _, arg = line.partition(" ")
-        if command == "/foto":
+        if command == "/photo":
             path = Path(arg.strip()).expanduser()
             if not path.exists():
-                self.stdout.write(f"No existe {path}")
+                self.stdout.write(f"{path} does not exist")
                 return None
             mime = mimetypes.guess_type(path.name)[0] or "image/jpeg"
             media_id = str(uuid.uuid4())
             client.media[media_id] = (path.read_bytes(), mime)
             kind = "document" if mime == "application/pdf" else "image"
             return Incoming(**base, kind=kind, media_id=media_id, mime_type=mime, filename=path.name)
-        if command == "/boton":
+        if command == "/button":
             return Incoming(**base, kind="reply", reply_id=arg.strip())
-        if command == "/ubicacion":
+        if command == "/location":
             lat, lng = (float(v) for v in arg.split(","))
             return Incoming(**base, kind="location", latitude=lat, longitude=lng)
         return Incoming(**base, kind="text", text=line)

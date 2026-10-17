@@ -1,0 +1,67 @@
+{% extends "panel/base.html" %}
+{% block panel %}
+<p class="small"><a href="{% url 'panel_agenda' %}?week={{ week }}">&larr; Agenda</a></p>
+
+<section class="card">
+  <div class="agenda-head">
+    <div>
+      <h1>Ruta del {{ day_label }}</h1>
+      {% if plan.method == "empty" %}
+        <p class="muted">No hay visitas este día.</p>
+      {% elif plan.method == "no coordinates" %}
+        <p class="error">Hay visitas sin ubicación en el mapa, así que no se puede calcular la ruta. Se muestran por hora.</p>
+      {% else %}
+        {% if several %}
+        <p class="muted">{{ groups|length }} enfermeras. La primera sale a las {{ plan.depart_at|time:"H:i" }} y la última vuelve cerca de las {{ plan.back_at|time:"H:i" }}. Unos {{ plan.travel_min|floatformat:0 }} minutos manejando entre todas.</p>
+        {% else %}
+        <p class="muted">Sale del laboratorio a las {{ plan.depart_at|time:"H:i" }} y vuelve cerca de las {{ plan.back_at|time:"H:i" }}. Unos {{ plan.travel_min|floatformat:0 }} minutos manejando en total.</p>
+        {% endif %}
+      {% endif %}
+    </div>
+    <form method="post">{% csrf_token %}<button class="btn">Recalcular</button></form>
+  </div>
+  {% if not plan.feasible and plan.method != "no coordinates" %}
+    <p class="error">Con estas visitas no hay un orden que llegue a todas dentro de su hora. Este es el orden por hora reservada{% if late %}; {{ late|length }} visita{{ late|pluralize }} quedaría{{ late|pluralize:"n" }} atrasada{{ late|pluralize }}{% endif %}. Conviene mover alguna.</p>
+  {% endif %}
+  {% include "panel/partials/map.html" %}
+  {% if maps_url and stops %}<p class="small"><a href="{{ maps_url }}" target="_blank" rel="noopener">Abrir en Google Maps para navegar</a></p>{% endif %}
+</section>
+
+{% for group in groups %}
+<section class="card">
+  {% if several or group.nurse %}<h2 class="nurse-title"><span class="nurse-dot" style="background: {{ group.color }}"></span>{{ group.nurse.name|default:"Enfermera" }}</h2>{% endif %}
+  {% if several and group.maps_url %}<p class="small"><a href="{{ group.maps_url }}" target="_blank" rel="noopener">Abrir su ruta en Google Maps</a></p>{% endif %}
+  <ol class="route">
+    {% for stop in group.stops %}
+    {% if stop.kind == "lab" %}
+    <li class="route-stop">
+      <p class="small muted route-leg">{{ stop.travel_min|floatformat:0 }} min de viaje</p>
+      <div class="visit lab-stop">
+        <span class="visit-time">{{ stop.arrival|time:"H:i" }}</span>
+        <span class="visit-main">
+          <strong>Pasar por el laboratorio</strong>
+          <span class="small muted">Deja las muestras y espera ahí. Vuelve a salir a las {{ stop.departure|time:"H:i" }}.</span>
+        </span>
+      </div>
+    </li>
+    {% else %}
+    <li class="route-stop{% if stop.late_min >= 1 %} late{% endif %}">
+      {% if stop.travel_min %}<p class="small muted route-leg">{{ stop.travel_min|floatformat:0 }} min de viaje{% if stop.wait_min >= 1 %} · espera {{ stop.wait_min|floatformat:0 }} min{% endif %}</p>{% endif %}
+      <a class="visit" href="{% url 'panel_order' stop.order.public_id %}">
+        <span class="visit-time">{% if stop.start %}{{ stop.start|time:"H:i" }}{% else %}{{ stop.order.slot_start|time:"H:i" }}{% endif %}</span>
+        <span class="visit-main">
+          <strong>{{ stop.order.patient_name|default:"Paciente sin nombre" }}</strong>
+          <span class="small muted">{{ stop.order.address }}{% if stop.order.apartment %}, {{ stop.order.apartment }}{% endif %}</span>
+          <span class="small muted">Hora reservada {{ stop.order.slot_start|time:"H:i" }}{% if stop.service_min %} · {{ stop.service_min|floatformat:0 }} min de atención{% endif %}{% if stop.late_min >= 1 %} · <span class="error">llega {{ stop.late_min|floatformat:0 }} min tarde</span>{% endif %}</span>
+        </span>
+        <span class="badge badge-{{ stop.order.visit_status }}">{{ stop.order.get_visit_status_display }}</span>
+      </a>
+    </li>
+    {% endif %}
+    {% endfor %}
+  </ol>
+  {% if group.back %}<p class="small muted">Vuelta al laboratorio cerca de las {{ group.back|time:"H:i" }}.</p>{% endif %}
+</section>
+{% endfor %}
+{% if stops %}<p class="small muted">Tiempos estimados con distancia en línea recta y {{ lab.travel_speed_kmh|floatformat:0 }} km/h de promedio. La hora de llegada es aproximada.</p>{% endif %}
+{% endblock %}

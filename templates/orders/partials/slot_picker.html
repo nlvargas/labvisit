@@ -1,4 +1,4 @@
-{% load static %}
+{% load static money %}
 {% if days %}
 <form method="post" action="{% url 'book' order.public_id %}" class="slot-picker" data-slot-picker>
   {% csrf_token %}
@@ -7,7 +7,7 @@
     <legend class="small strong">Día</legend>
     <div class="choices">
       {% for day in days %}
-      <label class="choice"><input type="radio" name="day" value="{{ day.date.isoformat }}"{% if forloop.first %} checked{% endif %}><span>{{ day.label }}</span></label>
+      <label class="choice{% if day.best_discount %} deal{% endif %}"><input type="radio" name="day" value="{{ day.date.isoformat }}"{% if forloop.first %} checked{% endif %}><span>{{ day.label }}{% if day.best_discount %}<small class="deal-tag">Con descuento</small>{% endif %}</span></label>
       {% endfor %}
     </div>
   </fieldset>
@@ -15,13 +15,14 @@
   <fieldset class="field" data-day="{{ day.date.isoformat }}">
     <legend class="small strong"><span class="day-name">{{ day.label }}</span><span class="hour-name">Hora</span></legend>
     <div class="choices">
-      {% for start in day.slots %}
-      <label class="choice"><input type="radio" name="slot" value="{{ start.isoformat }}" required{% if booking_form.slot.value == start.isoformat %} checked{% endif %}><span>{{ start|time:"H:i" }}</span></label>
+      {% for offer in day.offers %}
+      <label class="choice{% if offer.discount_clp %} deal{% endif %}"><input type="radio" name="slot" value="{{ offer.start.isoformat }}" required{% if booking_form.slot.value == offer.start.isoformat %} checked{% endif %}><span>{{ offer.start|time:"H:i" }}{% if offer.discount_clp %}<small class="deal-tag">{{ offer.discount_clp|clp }} menos</small>{% endif %}</span></label>
       {% endfor %}
     </div>
   </fieldset>
   {% endfor %}
   <p class="muted small">La enfermera llega dentro de la hora que elijas. Por ejemplo, 09:00 es entre 09:00 y 10:00.</p>
+  {% if has_deals %}<p class="muted small">Las horas con descuento calzan con la ruta que la enfermera ya tiene ese día.</p>{% endif %}
   <label class="field">
     <span class="small strong">{{ booking_form.contact_phone.label }}</span>
     {{ booking_form.contact_phone }}

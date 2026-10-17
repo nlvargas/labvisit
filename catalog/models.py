@@ -3,6 +3,21 @@ from django.db import models
 from labs.models import Lab
 
 
+class SampleContainer(models.Model):
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="containers")
+    name = models.CharField(max_length=80, help_text="For example 'EDTA' or 'Suero'.")
+    cap_color = models.CharField(max_length=40, blank=True)
+    minutes = models.PositiveSmallIntegerField(null=True, blank=True,
+                                               help_text="Blank uses the lab's minutes per tube.")
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [models.UniqueConstraint(fields=["lab", "name"], name="unique_container_per_lab")]
+
+    def __str__(self):
+        return f"{self.name} ({self.cap_color})" if self.cap_color else self.name
+
+
 class Exam(models.Model):
     class SampleType(models.TextChoices):
         BLOOD = "blood", "Sangre"
@@ -15,6 +30,8 @@ class Exam(models.Model):
     fonasa_code = models.CharField(max_length=20, blank=True)
     synonyms = models.TextField(blank=True, help_text="One synonym or abbreviation per line, for example HMG.")
     sample_type = models.CharField(max_length=10, choices=SampleType.choices, default=SampleType.BLOOD)
+    container = models.ForeignKey(SampleContainer, null=True, blank=True, on_delete=models.SET_NULL,
+                                  related_name="exams", help_text="Tube this exam is drawn into.")
     fasting_hours = models.PositiveSmallIntegerField(default=0)
     prep_text = models.TextField(blank=True, help_text="Patient instructions other than fasting.")
     active = models.BooleanField(default=True)

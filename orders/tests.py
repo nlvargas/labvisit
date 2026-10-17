@@ -210,6 +210,22 @@ class FlowTests(TestCase):
         order.save()
         self.assertContains(self.client.get(reverse("order_status", args=[order.public_id])), "Leímos tu orden")
 
+    def test_manual_order_searches_exams_on_details_step(self):
+        response = self.client.post(reverse("start_manual"))
+        order = Order.objects.latest("created_at")
+        page = self.client.get(response.url)
+        self.assertContains(page, "¿Qué exámenes te pidieron?")
+        self.assertContains(page, 'id="q"')
+        self.assertNotContains(page, "Tu orden médica")
+        exam = Exam.objects.get(lab=self.lab, name="Hemograma")
+        order.coverage = Coverage.objects.filter(lab=self.lab).first()
+        order.save()
+        added = self.client.post(reverse("add_exam", args=[order.public_id, exam.pk]),
+                                 HTTP_HX_REQUEST="true", HTTP_X_STEP="details")
+        self.assertContains(added, "Hemograma")
+        self.assertNotContains(added, 'id="price"')
+        self.assertContains(self.client.get(response.url), "Hemograma")
+
     def test_out_of_range_address_is_rejected(self):
         order = Order.objects.create(lab=self.lab, status=Order.Status.READY)
         coverage = Coverage.objects.get(lab=self.lab, kind="fonasa")
@@ -377,7 +393,7 @@ class GeoTests(TestCase):
 class SlotTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.lab = Lab.objects.create(name="Lab", slug="lab", visits_per_slot=2, booking_days_ahead=2, min_notice_hours=1)
+        cls.lab = Lab.objects.create(name="Lab", slug="lab", booking_days_ahead=2, min_notice_hours=1)
         OpeningHours.objects.create(lab=cls.lab, weekday=0, opens=time(8), closes=time(12))
         OpeningHours.objects.create(lab=cls.lab, weekday=1, opens=time(9), closes=time(11, 30))
 
@@ -391,13 +407,18 @@ class SlotTests(TestCase):
         self.assertEqual([s.hour for s in days[0].slots], [11])
         self.assertEqual([s.hour for s in days[1].slots], [9, 10])
 
-    def test_capacity(self):
+    def test_capacity_without_coordinates_is_one_visit_per_nurse(self):
+        from labs.models import Nurse, NurseSchedule
         start = timezone.make_aware(datetime(2026, 10, 20, 9))
         first, second, third = (Order.objects.create(lab=self.lab) for _ in range(3))
         self.assertTrue(slots.book(first, start, now=self.now()))
+        self.assertFalse(slots.book(second, start, now=self.now()))
+        self.assertTrue(slots.book(first, start, now=self.now()))
+        for name in ("Ana", "Bea"):
+            nurse = Nurse.objects.create(lab=self.lab, name=name)
+            NurseSchedule.objects.create(nurse=nurse, weekday=1, starts=time(9), ends=time(11, 30))
         self.assertTrue(slots.book(second, start, now=self.now()))
         self.assertFalse(slots.book(third, start, now=self.now()))
-        self.assertTrue(slots.book(first, start, now=self.now()))
         self.assertFalse(slots.book(third, timezone.make_aware(datetime(2026, 10, 20, 7)), now=self.now()))
 
     def test_labels(self):

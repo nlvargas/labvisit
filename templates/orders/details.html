@@ -2,10 +2,20 @@
 {% load static %}
 {% block content %}
 {% include "orders/partials/steps.html" with current=2 %}
+{% if not order.is_manual %}
 <section class="card">
   <h2>Tu orden médica</h2>
   <div id="reading-status">{% include "orders/partials/reading_status.html" %}</div>
 </section>
+{% else %}
+<section class="card" hx-headers='{"X-Step": "details"}'>
+  <h2>¿Qué exámenes te pidieron?</h2>
+  <div hidden data-reading-state="done"></div>
+  {% include "orders/partials/lines.html" %}
+  {% include "orders/partials/exam_search.html" %}
+</section>
+<script src="{% static 'js/search.js' %}" defer></script>
+{% endif %}
 
 <form class="card" method="post" action="{% url 'order_details' order.public_id %}"
       hx-post="{% url 'order_details' order.public_id %}" hx-trigger="change" hx-target="#details-saved" hx-swap="innerHTML"

@@ -7,6 +7,9 @@ from django.utils import timezone
 
 from labs.models import Lab
 
+from routing import planner
+from routing.service import estimate_minutes
+
 from .models import Order
 
 SLOT = timedelta(hours=1)
@@ -20,11 +23,19 @@ MONTHS_LONG = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "
 @dataclass
 class Day:
     date: object
-    slots: list
+    offers: list
 
     @property
     def label(self):
         return day_label(self.date)
+
+    @property
+    def slots(self):
+        return [offer.start for offer in self.offers]
+
+    @property
+    def best_discount(self):
+        return max((offer.discount_clp for offer in self.offers), default=0)
 
 
 def day_label(day, today=None):
@@ -71,16 +82,25 @@ def _taken(lab, exclude_order=None):
     return {row["slot_start"]: row["n"] for row in booked.values("slot_start").annotate(n=Count("id"))}
 
 
-def available_slots(lab, now=None, exclude_order=None):
-    """Free one-hour slots grouped by day, within the lab's opening hours."""
+def available_slots(lab, now=None, exclude_order=None, order=None):
+    """Free one-hour slots grouped by day. With an order that has an address, the slots that fit in the nurses'
+    routes, each with its route discount; otherwise each hour takes one visit per nurse working."""
     now = now or timezone.now()
     taken = _taken(lab, exclude_order)
-    days = {}
+    by_day = {}
     for start in _candidates(lab, now):
-        if taken.get(start, 0) < lab.visits_per_slot:
-            day = timezone.localdate(start)
-            days.setdefault(day, []).append(start)
-    return [Day(day, slots) for day, slots in days.items()]
+        by_day.setdefault(timezone.localdate(start), []).append(start)
+    days = []
+    for day, starts in by_day.items():
+        offers = planner.offers_for_day(lab, day, starts, order=order, exclude_order=exclude_order, now=now,
+                                        taken=taken)
+        if offers:
+            days.append(Day(day, offers))
+    return days
+
+
+def find_offer(days, start):
+    return next((offer for day in days for offer in day.offers if offer.start == start), None)
 
 
 def fasting_start(start, hours):
@@ -104,14 +124,21 @@ def parse_slot(value):
 
 
 def book(order, start, now=None):
-    """Books the slot if it's still free. Returns False when it was taken or isn't offered."""
+    """Books the slot if it's still offered and stores the new route. Returns False when it isn't."""
     with transaction.atomic():
         lab = Lab.objects.select_for_update().get(pk=order.lab_id)
-        free = {slot for day in available_slots(lab, now, exclude_order=order) for slot in day.slots}
-        if start not in free:
+        order.service_minutes = estimate_minutes(order)
+        offer = find_offer(available_slots(lab, now, exclude_order=order, order=order), start)
+        if offer is None:
             return False
+        previous = order.slot_start
         order.slot_start = start
         order.booked_at = timezone.now()
         order.visit_status = Order.Visit.REQUESTED
-        order.save(update_fields=["slot_start", "booked_at", "visit_status"])
+        order.visit_discount_clp = offer.discount_clp
+        order.save(update_fields=["slot_start", "booked_at", "visit_status", "visit_discount_clp", "service_minutes"])
+        day = timezone.localdate(start)
+        planner.replan(lab, day, planner.RoutePlan.Trigger.BOOKING, now=now)
+        if previous and timezone.localdate(previous) != day:
+            planner.replan(lab, timezone.localdate(previous), planner.RoutePlan.Trigger.BOOKING, now=now)
     return True

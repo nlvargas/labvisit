@@ -1,0 +1,6 @@
+{% load static %}
+{% if maps_key and map_points.stops %}
+<div class="panel-map" data-panel-map data-key="{{ maps_key }}" data-map-id="{{ maps_map_id }}"></div>
+{{ map_points|json_script:"map-points" }}
+<script src="{% static 'js/panel_map.js' %}" defer></script>
+{% endif %}

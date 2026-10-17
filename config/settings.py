@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "orders",
     "whatsapp",
     "panel",
+    "routing",
 ]
 
 MIDDLEWARE = [

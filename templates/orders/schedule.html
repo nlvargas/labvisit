@@ -6,6 +6,7 @@
   {% if order.is_booked %}
     <h1>Visita reservada</h1>
     <p class="booked-slot">{{ slot_label|capfirst }}</p>
+    {% if quote.visit_discount_clp %}<p class="deal-note strong">Tienes {{ quote.visit_discount_clp|clp }} de descuento en la visita por elegir una hora en ruta.</p>{% endif %}
     <p class="muted">La enfermera llega dentro de ese horario. El laboratorio te contactará al {{ order.contact_phone }} si necesita confirmar algo.</p>
     {% if fasting_from %}
     <div class="fasting">

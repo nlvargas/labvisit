@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from catalog.models import Exam
+from routing import planner
 
 from . import jobs, services, slots
 from .calendar import visit_ics
@@ -49,7 +50,8 @@ def _lines_context(order):
         "lines": lines,
         "exam_count": len(with_exam),
         "selected_count": len(selected),
-        "quote": services.build_quote(selected, order.coverage, order.visit_fee_clp) if order.coverage else None,
+        "quote": services.build_quote(selected, order.coverage, order.visit_fee_clp,
+                                       order.visit_discount_clp) if order.coverage else None,
     }
 
 
@@ -84,6 +86,8 @@ def order_detail(request, public_id):
     """Step 2: coverage and address, filled in while the order is being read."""
     order = _order(request, public_id)
     context = {"order": order, "details_form": OrderDetailsForm(instance=order, lab=order.lab)}
+    if order.is_manual:
+        context.update(_lines_context(order))
     context.update(_maps_context(order))
     return render(request, "orders/details.html", context)
 
@@ -113,6 +117,8 @@ def order_details(request, public_id):
     if partial:
         return render(request, "orders/partials/details_saved.html", {"order": order, "form": form})
     context = {"order": order, "details_form": form}
+    if order.is_manual:
+        context.update(_lines_context(order))
     context.update(_maps_context(order))
     return render(request, "orders/details.html", context)
 
@@ -192,13 +198,16 @@ def add_exam(request, public_id, exam_id):
 
 def _quote_context(order, exams, booking_form=None):
     prep = services.merge_prep(exams)
+    days = slots.available_slots(order.lab, exclude_order=order, order=order)
+    planner.log_offers(order, [offer for day in days for offer in day.offers], Order.Channel.WEB)
     return {
         "fasting_from": slots.fasting_start(order.slot_start, prep.fasting_hours) if order.slot_start else "",
         "order": order,
         "coverage": order.coverage,
-        "quote": services.build_quote(exams, order.coverage, order.visit_fee_clp),
+        "quote": services.build_quote(exams, order.coverage, order.visit_fee_clp, order.visit_discount_clp),
         "prep": prep,
-        "days": slots.available_slots(order.lab, exclude_order=order),
+        "days": days,
+        "has_deals": any(day.best_discount for day in days),
         "slot_label": slots.slot_label(order.slot_start) if order.slot_start else "",
         "booking_form": booking_form or BookingForm(initial={"contact_phone": order.contact_phone}),
     }

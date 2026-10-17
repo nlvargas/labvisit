@@ -20,7 +20,8 @@ echo "→ Collecting static files"
 python manage.py collectstatic --noinput -v0
 
 echo "→ Running migrations"
-zappa manage "$STAGE" migrate
+DATABASE_URL=$(python3 -c "import json;print(json.load(open('production.env.json'))['DATABASE_URL'])") \
+  python manage.py migrate --noinput
 
 echo "→ Updating code"
 zappa update "$STAGE"
