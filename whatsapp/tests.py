@@ -247,6 +247,29 @@ class WebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(Conversation.objects.filter(phone="56911112222", lab__slug="biodata").exists())
 
+    def test_zappa_backend_gets_json_arguments(self):
+        import sys
+        import types
+
+        calls = []
+
+        def run(func, args=()):
+            payload = json.loads(json.dumps(args))
+            calls.append(func.__name__)
+            func(*payload)
+
+        fake = types.ModuleType("zappa.asynchronous")
+        fake.run = run
+        url = reverse("whatsapp_webhook")
+        body = json.dumps(WEBHOOK).encode()
+        signature = "sha256=" + hmac.new(b"secret", body, hashlib.sha256).hexdigest()
+        with mock.patch.dict(sys.modules, {"zappa": types.ModuleType("zappa"), "zappa.asynchronous": fake}), \
+                self.settings(JOBS_BACKEND="zappa"):
+            response = self.client.post(url, body, content_type="application/json", HTTP_X_HUB_SIGNATURE_256=signature)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(calls, ["handle_incoming_data"] * 3)
+        self.assertTrue(Conversation.objects.filter(phone="56911112222", lab__slug="biodata").exists())
+
 
 class IsapreFlowTests(FlowTests):
     def test_isapre_asks_which_one(self):

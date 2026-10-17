@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import logging
+from dataclasses import asdict
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
@@ -9,7 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from orders import jobs
 
-from .flow import handle_incoming
+from .flow import handle_incoming_data
 from .inbound import parse_webhook
 
 logger = logging.getLogger(__name__)
@@ -41,5 +42,8 @@ def webhook(request):
     except ValueError:
         return HttpResponseBadRequest()
     for incoming in parse_webhook(payload):
-        jobs.enqueue(handle_incoming, incoming)
+        try:
+            jobs.enqueue(handle_incoming_data, asdict(incoming))
+        except Exception:
+            logger.exception("WhatsApp ...%s: could not start handling message %s", incoming.phone[-4:], incoming.wa_id)
     return HttpResponse("ok")

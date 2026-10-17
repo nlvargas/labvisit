@@ -19,6 +19,7 @@ from orders.models import Order, OrderLine
 from routing import planner
 
 from .client import get_client
+from .inbound import Incoming
 from .models import Conversation, Message
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,11 @@ class Bot:
     def location(self, body):
         self.client.request_location(self.to, body)
         self._log("location_request", body=body)
+
+
+def handle_incoming_data(data):
+    """Background entry point: jobs only carry JSON, so the message travels as a dict."""
+    return handle_incoming(Incoming(**data))
 
 
 def handle_incoming(incoming, client=None, lab=None):
