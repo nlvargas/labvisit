@@ -291,3 +291,94 @@ class IsapreFlowTests(FlowTests):
         replies = self.send("text", text="Isapre Consalud")
         self.assertEqual(replies[-1]["kind"], "location_request")
         self.assertEqual(self.conversation().order.isapre, "Consalud")
+
+
+@override_settings(MEDIA_ROOT=MEDIA, READER_PROVIDER="fake", JOBS_BACKEND="sync", LAB_URL_TEMPLATE="https://{slug}.lab.test")
+class LateDeliveryAndReminderTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", stdout=open("/dev/null", "w"))
+        cls.lab = Lab.objects.get(slug="biodata")
+
+    def setUp(self):
+        self.client_wa = ConsoleClient(output=lambda *_: None)
+        self.count = 0
+
+    def send(self, text="hola", sent_at=None):
+        from django.utils import timezone
+        self.count += 1
+        stamp = int((sent_at or timezone.now()).timestamp())
+        incoming = Incoming(phone_number_id="", phone="56911112222", wa_id=f"r{self.count}", kind="text", text=text,
+                            raw={"timestamp": str(stamp), "type": "text", "text": {"body": text}})
+        before = len(self.client_wa.sent)
+        handle_incoming(incoming, client=self.client_wa, lab=self.lab)
+        return self.client_wa.sent[before:]
+
+    def at(self, hour, minute=0, day=19):
+        from datetime import datetime
+        from django.utils import timezone
+        return timezone.make_aware(datetime(2026, 10, day, hour, minute))
+
+    def quiet_conversation(self, inbound, outbound, state=Conversation.State.AWAIT_ORDER):
+        from whatsapp.models import Conversation as C
+        conversation = C.objects.create(lab=self.lab, phone="56933334444", state=state)
+        C.objects.filter(pk=conversation.pk).update(last_inbound_at=inbound, last_outbound_at=outbound)
+        return conversation
+
+    def test_late_delivery_is_stored_but_not_answered(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from whatsapp.models import Message
+        self.assertEqual(self.send(sent_at=timezone.now() - timedelta(hours=2)), [])
+        self.assertEqual(Message.objects.filter(direction="in").count(), 1)
+
+    def test_older_message_than_one_already_handled_is_ignored(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        now = timezone.now()
+        self.assertTrue(self.send(sent_at=now))
+        self.assertEqual(self.send(sent_at=now - timedelta(minutes=3)), [])
+
+    def test_one_reminder_after_an_hour_then_silence(self):
+        from whatsapp.reminders import send_reminders
+        conversation = self.quiet_conversation(self.at(10), self.at(10, 1))
+        self.assertEqual(send_reminders(self.at(10, 30), client=self.client_wa), 0)
+        self.assertEqual(send_reminders(self.at(11, 5), client=self.client_wa), 1)
+        self.assertIn("¿Sigues ahí?", self.client_wa.sent[-1]["body"])
+        self.assertEqual(send_reminders(self.at(12, 30), client=self.client_wa), 0)
+        conversation.refresh_from_db()
+        self.assertIsNotNone(conversation.reminder_sent_at)
+
+    def test_reply_clears_the_reminder(self):
+        from whatsapp.models import Conversation as C
+        self.send()
+        conversation = C.objects.get(phone="56911112222")
+        C.objects.filter(pk=conversation.pk).update(reminder_sent_at=self.at(9))
+        self.send("hola de nuevo")
+        conversation.refresh_from_db()
+        self.assertIsNone(conversation.reminder_sent_at)
+        self.assertIsNotNone(conversation.last_outbound_at)
+        self.assertGreaterEqual(conversation.last_outbound_at, conversation.last_inbound_at)
+
+    def test_no_reminder_at_night_outside_the_window_or_when_done(self):
+        from whatsapp.reminders import send_reminders
+        self.quiet_conversation(self.at(20, 30), self.at(20, 31))
+        self.assertEqual(send_reminders(self.at(22, 0), client=self.client_wa), 0)
+        self.assertEqual(send_reminders(self.at(9, 0, day=20), client=self.client_wa), 1)
+        Conversation.objects.all().delete()
+        self.quiet_conversation(self.at(8, 0), self.at(8, 1))
+        self.assertEqual(send_reminders(self.at(9, 0, day=20), client=self.client_wa), 0)
+        Conversation.objects.all().delete()
+        self.quiet_conversation(self.at(10), self.at(10, 1), state=Conversation.State.DONE)
+        self.assertEqual(send_reminders(self.at(12), client=self.client_wa), 0)
+
+    def test_no_reminder_when_the_patient_spoke_last(self):
+        from whatsapp.reminders import send_reminders
+        self.quiet_conversation(self.at(10, 5), self.at(10))
+        self.assertEqual(send_reminders(self.at(12), client=self.client_wa), 0)
+
+    def test_reminder_links_to_the_order_once_there_is_one(self):
+        from whatsapp.reminders import reminder_text
+        conversation = self.quiet_conversation(self.at(10), self.at(10, 1), state=Conversation.State.AWAIT_SLOT)
+        conversation.order = Order.objects.create(lab=self.lab)
+        self.assertIn("https://biodata.lab.test/order/", reminder_text(conversation))

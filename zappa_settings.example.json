@@ -33,6 +33,10 @@
             {
                 "function": "config.jobs.purge_old_data",
                 "expression": "cron(0 7 * * ? *)"
+            },
+            {
+                "function": "config.jobs.send_whatsapp_reminders",
+                "expression": "rate(10 minutes)"
             }
         ],
         "domain": "*.lab.compile.cl",

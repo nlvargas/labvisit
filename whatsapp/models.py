@@ -21,6 +21,11 @@ class Conversation(models.Model):
     phone = models.CharField(max_length=30)
     state = models.CharField(max_length=20, choices=State.choices, default=State.AWAIT_ORDER)
     order = models.ForeignKey(Order, null=True, blank=True, on_delete=models.SET_NULL, related_name="conversations")
+    last_inbound_at = models.DateTimeField(null=True, blank=True, help_text="When the patient last wrote.")
+    last_outbound_at = models.DateTimeField(null=True, blank=True, help_text="When the bot last wrote.")
+    reminder_sent_at = models.DateTimeField(null=True, blank=True,
+                                            help_text="Set when the inactivity reminder goes out; cleared when the "
+                                                      "patient writes again.")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

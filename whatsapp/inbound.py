@@ -16,6 +16,15 @@ class Incoming:
     longitude: float | None = None
     raw: dict | None = None
 
+    @property
+    def sent_at(self):
+        """When the patient sent it, per WhatsApp, or None when unknown."""
+        stamp = (self.raw or {}).get("timestamp")
+        if not stamp:
+            return None
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(int(stamp), timezone.utc)
+
 
 def parse_webhook(payload):
     """Turns a Cloud API webhook payload into incoming messages. Delivery statuses are ignored."""

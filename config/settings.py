@@ -148,6 +148,12 @@ WHATSAPP_APP_SECRET = env("WHATSAPP_APP_SECRET", default="")
 WHATSAPP_VERIFY_TOKEN = env("WHATSAPP_VERIFY_TOKEN", default="")
 WHATSAPP_API_VERSION = env("WHATSAPP_API_VERSION", default="v25.0")
 WHATSAPP_CONVERSATION_TTL_HOURS = 24
+# Messages Meta delivers late (retries after an outage) are stored but not answered.
+WHATSAPP_STALE_MINUTES = 10
+# One reminder after this much silence, only between these local hours and inside Meta's 24 h window.
+WHATSAPP_REMINDER_AFTER_MINUTES = 60
+WHATSAPP_REMINDER_HOURS = (9, 21)
+WHATSAPP_REMINDER_WINDOW_HOURS = 23
 
 GOOGLE_MAPS_API_KEY = env("GOOGLE_MAPS_API_KEY", default="")
 GOOGLE_MAPS_MAP_ID = env("GOOGLE_MAPS_MAP_ID", default="DEMO_MAP_ID")

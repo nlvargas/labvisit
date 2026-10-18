@@ -39,6 +39,8 @@ class Bot:
     def _log(self, kind, **payload):
         Message.objects.create(conversation=self.conversation, direction=Message.Direction.OUT, kind=kind,
                                payload=payload)
+        self.conversation.last_outbound_at = timezone.now()
+        Conversation.objects.filter(pk=self.conversation.pk).update(last_outbound_at=self.conversation.last_outbound_at)
 
     def text(self, body):
         self.client.send_text(self.to, body)
@@ -79,6 +81,13 @@ def handle_incoming(incoming, client=None, lab=None):
                                kind=incoming.kind, payload=incoming.raw or {"text": incoming.text})
     except IntegrityError:
         return
+    sent_at = incoming.sent_at or timezone.now()
+    if _stale(conversation, sent_at):
+        logger.info("WhatsApp ...%s: ignoring a %s sent at %s (delivered late)", incoming.phone[-4:], incoming.kind,
+                    sent_at.isoformat())
+        return
+    conversation.last_inbound_at = sent_at
+    conversation.reminder_sent_at = None
     fresh = created or _expired(conversation) or conversation.state == State.DONE
     if fresh:
         _reset(conversation)
@@ -102,6 +111,13 @@ def handle_incoming(incoming, client=None, lab=None):
     }[conversation.state]
     handler(bot, conversation, incoming, fresh)
     conversation.save()
+
+
+def _stale(conversation, sent_at):
+    """Late deliveries: older than WHATSAPP_STALE_MINUTES, or older than a message already handled."""
+    if sent_at < timezone.now() - timedelta(minutes=settings.WHATSAPP_STALE_MINUTES):
+        return True
+    return conversation.last_inbound_at is not None and sent_at < conversation.last_inbound_at
 
 
 def _expired(conversation):
