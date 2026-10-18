@@ -82,20 +82,22 @@ def _taken(lab, exclude_order=None):
     return {row["slot_start"]: row["n"] for row in booked.values("slot_start").annotate(n=Count("id"))}
 
 
-def available_slots(lab, now=None, exclude_order=None, order=None):
+def available_slots(lab, now=None, exclude_order=None, order=None, day=None):
     """Free one-hour slots grouped by day. With an order that has an address, the slots that fit in the nurses'
-    routes, each with its route discount; otherwise each hour takes one visit per nurse working."""
+    routes, each with its route discount; otherwise each hour takes one visit per nurse working. With day, only
+    that day is computed."""
     now = now or timezone.now()
     taken = _taken(lab, exclude_order)
     by_day = {}
     for start in _candidates(lab, now):
-        by_day.setdefault(timezone.localdate(start), []).append(start)
+        if day is None or timezone.localdate(start) == day:
+            by_day.setdefault(timezone.localdate(start), []).append(start)
     days = []
-    for day, starts in by_day.items():
-        offers = planner.offers_for_day(lab, day, starts, order=order, exclude_order=exclude_order, now=now,
+    for slot_day, starts in by_day.items():
+        offers = planner.offers_for_day(lab, slot_day, starts, order=order, exclude_order=exclude_order, now=now,
                                         taken=taken)
         if offers:
-            days.append(Day(day, offers))
+            days.append(Day(slot_day, offers))
     return days
 
 
@@ -128,7 +130,8 @@ def book(order, start, now=None):
     with transaction.atomic():
         lab = Lab.objects.select_for_update().get(pk=order.lab_id)
         order.service_minutes = estimate_minutes(order)
-        offer = find_offer(available_slots(lab, now, exclude_order=order, order=order), start)
+        offer = find_offer(available_slots(lab, now, exclude_order=order, order=order,
+                                           day=timezone.localdate(start)), start)
         if offer is None:
             return False
         previous = order.slot_start

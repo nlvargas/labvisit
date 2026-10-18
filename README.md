@@ -34,6 +34,9 @@ Only use the Gemini free tier with your own or made-up orders: on unpaid usage G
 - `labs/` the Lab model and the middleware that picks the lab from the subdomain
 - `catalog/` exams, coverages and prices, managed from the Django admin
 - `orders/` upload, reading (`reader.py`), matching (`matching.py`), background jobs (`jobs.py`), and the patient pages
+- `routing/` nurse routes: exact dynamic program for one nurse (`tsptw.py`), split across several nurses (`multi.py`), slot offers and stored plans (`planner.py`)
+- `whatsapp/` the booking conversation (`flow.py`) and the inactivity reminder (`reminders.py`)
+- `panel/` the lab staff panel
 - `templates/`, `static/` Django templates with HTMX
 
 ## Tests
@@ -59,9 +62,15 @@ To connect a real number (WhatsApp Cloud API):
 3. In the admin, set the lab's "Whatsapp phone number id".
 4. In Meta, set the webhook to `https://<your domain>/whatsapp/webhook/` with the same verify token, and subscribe to the `messages` field. For local testing, expose your server with `cloudflared tunnel --url http://localhost:8000`.
 
+Messages Meta delivers more than 10 minutes late (retries after an outage) are stored but not answered. When the patient goes quiet for an hour mid-booking, they get one reminder, between 09:00 and 21:00 and inside Meta's 24 hour window. `send_reminders --dry-run` shows who is due.
+
 ## Lab panel
 
 Lab staff see booked visits at `/panel/` on the lab's subdomain. Create a user in the admin and add them as a staff user on the lab's page; superusers can open any lab's panel. From an order the staff can confirm, mark as done or cancel a visit (cancelling frees the hour) and keep internal notes.
+
+## Routes and slot offers
+
+Nurses, with weekly schedules and time off, are set up in the admin; without nurses the lab's opening hours count as one shift. Each booking re-plans the day: visits already done stay put and the rest is planned from each nurse's last stop. A patient only sees hours that fit in the routes, with a discount when the visit adds little driving. The day's route, with a map, is at `/panel/route/<date>/`. Travel speed, visit length (per tube type), lab returns and discounts are under "Routing" on the lab's admin page.
 
 ## Deploy (AWS Lambda + Neon)
 
@@ -85,4 +94,4 @@ Production runs on Lambda through Zappa, with Postgres on Neon and order files i
 7. Cloudflare: add a CNAME `*.lab` pointing to the CloudFront domain that `zappa certify` prints (DNS only, not proxied).
 8. Meta: change the webhook URL to `https://biodata.lab.compile.cl/whatsapp/webhook/`.
 
-Later deploys are `./deploy.sh`: it uploads `production.env.json`, collects static files, runs the migrations and then updates the code. Add `--schedule` after changing scheduled jobs. Order files, WhatsApp messages and unbooked quotes older than `RETENTION_DAYS` (90) are deleted every night by `purge_old_data`.
+Later deploys are `./deploy.sh`: it uploads `production.env.json`, collects static files, runs the migrations from your machine against the production database and then updates the code, so migrations must keep working with the code still deployed. Add `--schedule` after changing scheduled jobs (the nightly purge, the WhatsApp reminders every 10 minutes, keep warm). Order files, WhatsApp messages, unbooked quotes, logged slot offers and superseded route plans older than `RETENTION_DAYS` (90) are deleted every night by `purge_old_data`.

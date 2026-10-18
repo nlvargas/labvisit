@@ -199,7 +199,8 @@ def add_exam(request, public_id, exam_id):
 def _quote_context(order, exams, booking_form=None):
     prep = services.merge_prep(exams)
     days = slots.available_slots(order.lab, exclude_order=order, order=order)
-    planner.log_offers(order, [offer for day in days for offer in day.offers], Order.Channel.WEB)
+    if not order.is_booked:
+        planner.log_offers(order, [offer for day in days for offer in day.offers], Order.Channel.WEB)
     return {
         "fasting_from": slots.fasting_start(order.slot_start, prep.fasting_hours) if order.slot_start else "",
         "order": order,

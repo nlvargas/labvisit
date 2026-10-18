@@ -448,6 +448,12 @@ class PurgeTests(TestCase):
         Message.objects.create(conversation=conversation, direction="in", kind="text")
         Message.objects.filter(conversation=conversation).update(created_at=old)
         Conversation.objects.filter(pk=conversation.pk).update(updated_at=old)
+        from routing.models import RoutePlan, SlotOffer
+        SlotOffer.objects.create(order=booked, channel="web", slot_start=timezone.now())
+        SlotOffer.objects.update(shown_at=old)
+        fresh_offer = SlotOffer.objects.create(order=booked, channel="web", slot_start=timezone.now())
+        superseded, kept = (RoutePlan.objects.create(lab=lab, date=old.date(), trigger="booking") for _ in range(2))
+        RoutePlan.objects.update(created_at=old)
 
         call_command("purge_old_data", stdout=io.StringIO())
 
@@ -457,6 +463,8 @@ class PurgeTests(TestCase):
         self.assertTrue(Order.objects.filter(pk=recent.pk).exists())
         self.assertFalse(Message.objects.exists())
         self.assertFalse(Conversation.objects.exists())
+        self.assertEqual(list(SlotOffer.objects.all()), [fresh_offer])
+        self.assertEqual(list(RoutePlan.objects.all()), [kept])
 
 
 class GeminiRetryTests(TestCase):
