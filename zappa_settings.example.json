@@ -35,6 +35,10 @@
                 "expression": "cron(0 7 * * ? *)"
             },
             {
+                "function": "config.jobs.fill_demo_visits",
+                "expression": "cron(10 7 * * ? *)"
+            },
+            {
                 "function": "config.jobs.send_whatsapp_reminders",
                 "expression": "rate(10 minutes)"
             }

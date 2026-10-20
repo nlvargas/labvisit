@@ -550,3 +550,19 @@ class FastingAndCalendarTests(TestCase):
         self.assertIn("LOCATION:Plaza de Armas 444\\, Santiago", ics)
         response = self.client.get(reverse("calendar_event", args=[order.public_id]), HTTP_HOST="lab.localhost")
         self.assertEqual(response["Content-Type"], "text/calendar; charset=utf-8")
+
+
+class FillDemoVisitsTests(TestCase):
+    def test_books_upcoming_days_once_and_drops_past_ones(self):
+        call_command("seed_demo", slug="demo", name="Demo", stdout=io.StringIO())
+        lab = Lab.objects.get(slug="demo")
+        call_command("fill_demo_visits", stdout=io.StringIO())
+        demo = Order.objects.filter(lab=lab, staff_notes="Visita de ejemplo del demo")
+        first = demo.count()
+        self.assertGreater(first, 0)
+        self.assertFalse(demo.filter(slot_start__isnull=True).exists())
+        call_command("fill_demo_visits", stdout=io.StringIO())
+        self.assertEqual(demo.count(), first)
+        demo.filter(pk=demo.first().pk).update(slot_start=timezone.now() - timedelta(days=2))
+        call_command("fill_demo_visits", stdout=io.StringIO())
+        self.assertEqual(demo.count(), first - 1)

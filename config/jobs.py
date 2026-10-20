@@ -15,3 +15,11 @@ def send_whatsapp_reminders(event=None, context=None):
 
     django.setup()
     call_command("send_reminders")
+
+
+def fill_demo_visits(event=None, context=None):
+    """Daily schedule entry for Zappa."""
+    import django
+
+    django.setup()
+    call_command("fill_demo_visits")
