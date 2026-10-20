@@ -80,3 +80,50 @@ class PanelTests(TestCase):
         next_monday = timezone.localdate() + timedelta(days=7 - timezone.localdate().weekday())
         response = self.client.get(reverse("panel_agenda") + f"?week={next_monday.isoformat()}")
         self.assertContains(response, "Hoy</a>")
+
+
+class MetricsAndNurseTests(TestCase):
+    setUpTestData = classmethod(PanelTests.setUpTestData.__func__)
+    booked_order = PanelTests.booked_order
+
+    def nurse(self):
+        from labs.models import Nurse, NurseSchedule
+        nurse = Nurse.objects.create(lab=self.lab, name="Carla Muñoz")
+        for weekday in range(7):
+            NurseSchedule.objects.create(nurse=nurse, weekday=weekday, starts="07:00", ends="20:00")
+        return nurse
+
+    def test_metrics_page(self):
+        order = self.booked_order()
+        self.client.force_login(self.staff)
+        week = timezone.localdate(order.slot_start).isoformat()
+        response = self.client.get(reverse("panel_metrics") + f"?week={week}")
+        self.assertContains(response, "visitas por enfermera al día")
+        self.assertContains(response, "de secretaría ahorradas")
+
+    def test_nurse_link_and_actions(self):
+        nurse = self.nurse()
+        order = self.booked_order()
+        token = nurse.route_token()
+        day = timezone.localdate(order.slot_start).isoformat()
+        self.assertEqual(self.client.get(reverse("nurse_route", args=["wrong"])).status_code, 404)
+        page = self.client.get(reverse("nurse_route", args=[token]) + f"?day={day}")
+        self.assertContains(page, "Ana Pérez")
+        self.assertContains(page, "Voy en camino")
+
+        on_the_way = self.client.post(reverse("nurse_action", args=[token, order.public_id, "en-route"]))
+        self.assertTrue(on_the_way["Location"].startswith("https://wa.me/56911112222?text="))
+        self.client.post(reverse("nurse_action", args=[token, order.public_id, "arrived"]))
+        self.client.post(reverse("nurse_action", args=[token, order.public_id, "done"]))
+        order.refresh_from_db()
+        self.assertIsNotNone(order.en_route_at)
+        self.assertIsNotNone(order.arrived_at)
+        self.assertEqual(order.visit_status, Order.Visit.COMPLETED)
+        self.assertContains(self.client.get(reverse("nurse_route", args=[token]) + f"?day={day}"), "Lista a las")
+
+    def test_payment_button_only_when_enabled(self):
+        order = self.booked_order()
+        url = reverse("schedule", args=[order.public_id])
+        self.assertNotContains(self.client.get(url), "Pagar en línea")
+        Lab.objects.filter(pk=self.lab.pk).update(show_online_payment=True)
+        self.assertContains(self.client.get(url), "Pagar en línea")

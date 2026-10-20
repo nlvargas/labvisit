@@ -1,3 +1,5 @@
+import secrets
+
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
@@ -62,6 +64,8 @@ class Lab(models.Model):
     address_line = models.CharField(max_length=200, blank=True, help_text="Shown in the footer.")
     website_url = models.URLField(blank=True)
     results_url = models.URLField(blank=True, help_text="Link to the lab's results portal, shown at the top.")
+    show_online_payment = models.BooleanField(
+        default=False, help_text="Shows a 'Pagar en línea' button after booking. It doesn't charge anything yet.")
 
     class Meta:
         ordering = ["name"]
@@ -144,12 +148,20 @@ class Nurse(models.Model):
     name = models.CharField(max_length=120)
     phone = models.CharField(max_length=40, blank=True)
     is_active = models.BooleanField(default=True)
+    access_token = models.CharField(max_length=40, blank=True, db_index=True,
+                                    help_text="Secret part of her route link. Clear it to make the old link stop working.")
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.name
+
+    def route_token(self):
+        if not self.access_token:
+            self.access_token = secrets.token_urlsafe(16)
+            self.save(update_fields=["access_token"])
+        return self.access_token
 
     def shift_on(self, day):
         """Working minutes after midnight on that day, or None when she doesn't work."""

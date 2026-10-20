@@ -15,7 +15,13 @@
       <span class="small">Ayuno de {{ prep.fasting_hours }} horas. Puedes tomar agua.</span>
     </div>
     {% endif %}
+    {% if order.lab.show_online_payment %}
+    <button type="button" class="btn primary">Pagar en línea {{ quote.total_clp|clp }}</button>
+    <p class="muted small center">Paga ahora con tarjeta o transferencia y la enfermera no te cobra en la visita.</p>
+    <a class="btn" href="{% url 'calendar_event' order.public_id %}">Agregar a mi calendario</a>
+    {% else %}
     <a class="btn primary" href="{% url 'calendar_event' order.public_id %}">Agregar a mi calendario</a>
+    {% endif %}
     <p class="muted small center">Con {% if fasting_from %}una alarma para empezar el ayuno y {% endif %}otra una hora antes de la visita.</p>
     <details class="change-slot">
       <summary>Cambiar hora</summary>

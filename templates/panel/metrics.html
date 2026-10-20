@@ -1,0 +1,59 @@
+{% extends "panel/base.html" %}
+{% load money %}
+{% block title %}{{ lab.name }} · Métricas{% endblock %}
+{% block panel %}
+<p class="small"><a href="{% url 'panel_agenda' %}">&larr; Agenda</a></p>
+<div class="agenda-head">
+  <div>
+    <h1>Métricas, semana del {{ week_label }}</h1>
+    <p class="muted small">Visitas de la semana según su hora reservada. Reservas y cotizaciones según el día en que se hicieron.</p>
+  </div>
+  <nav class="week-nav">
+    <a class="chip" href="?week={{ prev_week }}" aria-label="Semana anterior">&larr;</a>
+    {% if not this_week %}<a class="chip" href="{% url 'panel_metrics' %}">Esta semana</a>{% endif %}
+    <a class="chip" href="?week={{ next_week }}" aria-label="Semana siguiente">&rarr;</a>
+  </nav>
+</div>
+
+<section class="card">
+  <h2>Rutas</h2>
+  <div class="tiles">
+    <div class="tile"><strong>{{ m.visits }}</strong><span>visitas{% if m.completed %}, {{ m.completed }} realizada{{ m.completed|pluralize }}{% endif %}</span></div>
+    <div class="tile"><strong>{{ m.visits_per_nurse_day|floatformat:1|default:"–" }}</strong><span>visitas por enfermera al día</span></div>
+    <div class="tile"><strong>{% if m.travel_per_nurse_day is not None %}{{ m.travel_per_nurse_day|floatformat:0 }} min{% else %}–{% endif %}</strong><span>manejando por enfermera al día</span></div>
+    <div class="tile"><strong>{% if m.travel_per_visit is not None %}{{ m.travel_per_visit|floatformat:0 }} min{% else %}–{% endif %}</strong><span>de manejo por visita</span></div>
+  </div>
+  <p class="muted small">Manejo estimado de las rutas planificadas, con {{ lab.travel_speed_kmh|floatformat:0 }} km/h de promedio.</p>
+</section>
+
+<section class="card">
+  <h2>En terreno</h2>
+  {% if m.arrived %}
+  <div class="tiles">
+    <div class="tile"><strong>{% if m.on_time_share is not None %}{% widthratio m.on_time_share 1 100 %}%{% else %}–{% endif %}</strong><span>de las llegadas, dentro de la hora reservada</span></div>
+    <div class="tile"><strong>{% if m.real_service is not None %}{{ m.real_service|floatformat:0 }} min{% else %}–{% endif %}</strong><span>de atención real promedio{% if m.estimated_service %} (estimado: {{ m.estimated_service|floatformat:0 }} min){% endif %}</span></div>
+  </div>
+  <p class="muted small">Con {{ m.arrived }} llegada{{ m.arrived|pluralize }} marcada{{ m.arrived|pluralize }} por las enfermeras desde su link de ruta.</p>
+  {% else %}
+  <p class="muted small">Todavía no hay visitas marcadas por las enfermeras. Cuando usen los botones "Llegué" y "Lista" de su link de ruta, aquí aparece la puntualidad y el tiempo real de cada atención.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Reservas</h2>
+  <div class="tiles">
+    <div class="tile"><strong>{{ m.bookings }}</strong><span>reservas hechas por los pacientes{% if m.bookings_whatsapp %}, {{ m.bookings_whatsapp }} por WhatsApp{% endif %}</span></div>
+    <div class="tile"><strong>{{ m.bookings_off_hours }}</strong><span>fuera de horario de oficina (antes de 9:00, después de 18:00 o fin de semana)</span></div>
+    <div class="tile"><strong>~{{ m.desk_hours|floatformat:1 }} h</strong><span>de secretaría ahorradas (estimando {{ m.desk_min_per_booking }} min por reserva)</span></div>
+    <div class="tile"><strong>{% if m.conversion is not None %}{% widthratio m.conversion 1 100 %}%{% else %}–{% endif %}</strong><span>de las {{ m.quotes }} cotizaciones terminaron en reserva{% if m.median_to_book is not None %}, {% if m.median_to_book < 1 %}en menos de 1 min{% else %}en {{ m.median_to_book|floatformat:0 }} min{% endif %} (mediana){% endif %}</span></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Descuentos en ruta</h2>
+  <div class="tiles">
+    <div class="tile"><strong>{{ m.discounted }}</strong><span>visitas reservadas en una hora con descuento</span></div>
+    <div class="tile"><strong>{{ m.discount_total|clp }}</strong><span>en descuentos entregados</span></div>
+  </div>
+</section>
+{% endblock %}

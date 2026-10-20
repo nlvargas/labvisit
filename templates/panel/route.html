@@ -31,6 +31,7 @@
 <section class="card">
   {% if several or group.nurse %}<h2 class="nurse-title"><span class="nurse-dot" style="background: {{ group.color }}"></span>{{ group.nurse.name|default:"Enfermera" }}</h2>{% endif %}
   {% if several and group.maps_url %}<p class="small"><a href="{{ group.maps_url }}" target="_blank" rel="noopener">Abrir su ruta en Google Maps</a></p>{% endif %}
+  {% if group.nurse_url %}<p class="small">Link para su celular, con botones para avisar que va en camino y marcar cada visita: <a href="{{ group.nurse_url }}" target="_blank" rel="noopener">abrir</a> <button type="button" class="link small" data-copy="{{ group.nurse_url }}">copiar</button></p>{% endif %}
   <ol class="route">
     {% for stop in group.stops %}
     {% if stop.kind == "lab" %}
@@ -52,7 +53,7 @@
         <span class="visit-main">
           <strong>{{ stop.order.patient_name|default:"Paciente sin nombre" }}</strong>
           <span class="small muted">{{ stop.order.address }}{% if stop.order.apartment %}, {{ stop.order.apartment }}{% endif %}</span>
-          <span class="small muted">Hora reservada {{ stop.order.slot_start|time:"H:i" }}{% if stop.service_min %} · {{ stop.service_min|floatformat:0 }} min de atención{% endif %}{% if stop.late_min >= 1 %} · <span class="error">llega {{ stop.late_min|floatformat:0 }} min tarde</span>{% endif %}</span>
+          <span class="small muted">Hora reservada {{ stop.order.slot_start|time:"H:i" }}{% if stop.service_min %} · {{ stop.service_min|floatformat:0 }} min de atención{% endif %}{% if stop.late_min >= 1 %} · <span class="error">llega {{ stop.late_min|floatformat:0 }} min tarde</span>{% endif %}{% if stop.order.completed_at %} · lista a las {{ stop.order.completed_at|time:"H:i" }}{% elif stop.order.arrived_at %} · llegó a las {{ stop.order.arrived_at|time:"H:i" }}{% elif stop.order.en_route_at %} · en camino desde las {{ stop.order.en_route_at|time:"H:i" }}{% endif %}</span>
         </span>
         <span class="badge badge-{{ stop.order.visit_status }}">{{ stop.order.get_visit_status_display }}</span>
       </a>
@@ -64,4 +65,9 @@
 </section>
 {% endfor %}
 {% if stops %}<p class="small muted">Tiempos estimados con distancia en línea recta y {{ lab.travel_speed_kmh|floatformat:0 }} km/h de promedio. La hora de llegada es aproximada.</p>{% endif %}
+<script>
+  document.querySelectorAll("[data-copy]").forEach((button) => button.addEventListener("click", () => {
+    navigator.clipboard.writeText(button.dataset.copy).then(() => { button.textContent = "copiado"; });
+  }));
+</script>
 {% endblock %}

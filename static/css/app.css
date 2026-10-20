@@ -230,3 +230,19 @@ input[type=password], textarea { width: 100%; padding: 12px; border: 1px solid v
 .lab-stop { background: var(--bg, #f7f9f9); border-style: dashed !important; }
 .nurse-title { display: flex; align-items: center; gap: 8px; }
 .nurse-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.tile { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); }
+.tile strong { font-size: 26px; line-height: 1.1; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.tile span { font-size: 14px; color: var(--muted); }
+.nurse-visit h2 { text-transform: none; color: var(--ink); margin: 4px 0; }
+.nurse-visit p { margin: 4px 0; }
+.nurse-visit.is-done { opacity: .6; }
+.nurse-visit-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.nurse-visit-head .visit-time { font-size: 20px; }
+.nurse-links { display: flex; gap: 16px; }
+.nurse-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.nurse-actions form:first-child:nth-last-child(3) { grid-column: 1 / -1; }
+.nurse-actions .btn { margin-top: 0; padding: 12px 8px; }
+.nurse-status { font-weight: 600; color: var(--accent-text); }
+.nurse-lab { margin: 0 4px 16px; }

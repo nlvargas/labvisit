@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Ruta de {{ nurse.name }}{% endblock %}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block content %}
+<header class="panel-bar">
+  <span class="panel-brand">{{ lab.name }}</span>
+  <nav class="week-nav">
+    <a class="chip" href="?day={{ prev_day }}" aria-label="Día anterior">&larr;</a>
+    {% if not is_today %}<a class="chip" href="?">Hoy</a>{% endif %}
+    <a class="chip" href="?day={{ next_day }}" aria-label="Día siguiente">&rarr;</a>
+  </nav>
+</header>
+
+<section class="card">
+  <h1>{{ nurse.name }}</h1>
+  <p class="muted">{{ day_label|capfirst }}: {% if visit_count == 1 %}1 visita{% elif visit_count %}{{ visit_count }} visitas{% else %}sin visitas{% endif %}.</p>
+  {% if maps_url and visit_count %}<a class="btn" href="{{ maps_url }}" target="_blank" rel="noopener">Abrir la ruta en Google Maps</a>{% endif %}
+</section>
+
+{% for stop in stops %}
+{% if stop.kind == "lab" %}
+<p class="small muted nurse-lab">{{ stop.arrival|time:"H:i" }} · Pasar por el laboratorio a dejar las muestras. Volver a salir a las {{ stop.departure|time:"H:i" }}.</p>
+{% else %}
+{% with order=stop.order %}
+<section class="card nurse-visit{% if order.completed_at %} is-done{% endif %}" id="visit-{{ order.public_id }}">
+  <div class="nurse-visit-head">
+    <span class="visit-time">{% if stop.start %}{{ stop.start|time:"H:i" }}{% else %}{{ order.slot_start|time:"H:i" }}{% endif %}</span>
+    <span class="small muted">Hora reservada {{ order.slot_start|time:"H:i" }}</span>
+  </div>
+  <h2>{{ order.patient_name|default:"Paciente sin nombre" }}</h2>
+  <p>{{ order.address }}{% if order.apartment %}, {{ order.apartment }}{% endif %}</p>
+  {% if order.address_notes %}<p class="small muted">{{ order.address_notes }}</p>{% endif %}
+  {% if stop.exam_names %}<p class="small">{{ stop.exam_names|join:", " }}</p>{% endif %}
+  <p class="small nurse-links">
+    {% if order.latitude is not None %}<a href="https://www.google.com/maps/dir/?api=1&destination={{ order.latitude }},{{ order.longitude }}&travelmode=driving" target="_blank" rel="noopener">Cómo llegar</a>{% endif %}
+    {% if stop.phone_digits %}<a href="tel:+{% if stop.phone_digits|length == 9 %}56{% endif %}{{ stop.phone_digits }}">Llamar</a>{% endif %}
+  </p>
+  {% if order.completed_at %}
+    <p class="nurse-status">Lista a las {{ order.completed_at|time:"H:i" }}</p>
+  {% else %}
+    {% if order.arrived_at %}<p class="nurse-status">Llegaste a las {{ order.arrived_at|time:"H:i" }}</p>
+    {% elif order.en_route_at %}<p class="nurse-status">En camino desde las {{ order.en_route_at|time:"H:i" }}</p>{% endif %}
+    <div class="nurse-actions">
+      {% if not order.en_route_at and not order.arrived_at %}
+      <form method="post" action="{% url 'nurse_action' token order.public_id 'en-route' %}">{% csrf_token %}<button class="btn">Voy en camino</button></form>
+      {% endif %}
+      {% if not order.arrived_at %}
+      <form method="post" action="{% url 'nurse_action' token order.public_id 'arrived' %}">{% csrf_token %}<button class="btn">Llegué</button></form>
+      {% endif %}
+      <form method="post" action="{% url 'nurse_action' token order.public_id 'done' %}">{% csrf_token %}<button class="btn primary">Lista</button></form>
+    </div>
+    {% if not order.en_route_at and not order.arrived_at %}<p class="small muted">"Voy en camino" abre WhatsApp con un mensaje listo para el paciente.</p>{% endif %}
+  {% endif %}
+</section>
+{% endwith %}
+{% endif %}
+{% endfor %}
+{% endblock %}

@@ -61,6 +61,9 @@ class Order(models.Model):
     slot_start = models.DateTimeField(null=True, blank=True, db_index=True)
     booked_at = models.DateTimeField(null=True, blank=True)
     visit_status = models.CharField(max_length=10, choices=Visit.choices, default=Visit.REQUESTED)
+    en_route_at = models.DateTimeField(null=True, blank=True)
+    arrived_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     staff_notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
