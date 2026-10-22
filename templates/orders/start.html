@@ -16,6 +16,7 @@
     {% csrf_token %}
     <label class="dropzone" data-dropzone>
       <input type="file" name="file" accept="image/*,application/pdf" required>
+      <img class="dropzone-preview" data-preview alt="Vista previa de la orden" hidden>
       <span class="dropzone-title" data-title>Arrastra tu orden aquí, toma una foto o elige un archivo</span>
       <span class="muted small">JPG, PNG, HEIC o PDF, hasta 10 MB</span>
       <span class="filename small" data-filename></span>

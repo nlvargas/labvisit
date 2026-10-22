@@ -25,11 +25,22 @@ document.querySelectorAll("[data-dropzone]").forEach((zone) => {
   const form = zone.closest("form");
   const input = zone.querySelector("input[type=file]");
   const filename = zone.querySelector("[data-filename]");
+  const preview = zone.querySelector("[data-preview]");
   const button = form.querySelector("[data-submit]");
   const error = form.querySelector("[data-error]");
   const buttonLabel = button.textContent;
   let upload = null;
   let waiting = false;
+
+  function showPreview(file) {
+    if (preview.src) URL.revokeObjectURL(preview.src);
+    preview.hidden = true;
+    preview.removeAttribute("src");
+    if (!file || !file.type.startsWith("image/")) return;
+    preview.onload = () => { preview.hidden = false; };
+    preview.onerror = () => { preview.hidden = true; };
+    preview.src = URL.createObjectURL(file);
+  }
 
   function showError(message) {
     error.textContent = message;
@@ -40,6 +51,7 @@ document.querySelectorAll("[data-dropzone]").forEach((zone) => {
     if (!file) return;
     showError("");
     filename.textContent = file.name;
+    showPreview(file);
     zone.classList.add("has-file");
     const current = (async () => {
       const body = new FormData();
@@ -60,6 +72,7 @@ document.querySelectorAll("[data-dropzone]").forEach((zone) => {
       upload = null;
       zone.classList.remove("has-file");
       filename.textContent = "";
+      showPreview(null);
       button.textContent = buttonLabel;
       button.disabled = false;
       waiting = false;

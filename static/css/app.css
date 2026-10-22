@@ -41,6 +41,7 @@ h2 { font-size: 18px; margin: 0 0 8px; }
 .dropzone.is-dragging { border-color: var(--accent); background: var(--accent-soft); }
 .dropzone input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .dropzone-title { font-weight: 600; color: var(--accent-text); }
+.dropzone-preview { max-width: 70%; max-height: 220px; object-fit: contain; margin-bottom: 8px; border-radius: var(--radius-sm); box-shadow: 0 4px 14px rgba(0, 0, 0, .12); }
 .filename { color: var(--ink); font-weight: 600; }
 .lines { list-style: none; padding: 0; margin: 16px 0; }
 .line { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; }
