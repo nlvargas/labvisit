@@ -5,7 +5,7 @@
 <section class="card">
   <div class="agenda-head">
     <div>
-      <h1>Ruta del {{ day_label }}</h1>
+      <h1>Ruta para {{ day_phrase }}</h1>
       {% if plan.method == "empty" %}
         <p class="muted">No hay visitas este día.</p>
       {% elif plan.method == "no coordinates" %}

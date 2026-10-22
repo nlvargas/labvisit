@@ -412,7 +412,7 @@ class RoutePanelTests(TestCase):
         self.client.force_login(user)
         url = reverse("panel_route", args=["2026-10-20"])
         response = self.client.get(url)
-        self.assertContains(response, "Ruta del")
+        self.assertContains(response, "Ruta para")
         self.assertContains(response, "Ana")
         self.assertContains(response, "google.com/maps/dir")
         with self.settings(GOOGLE_MAPS_API_KEY="k"):

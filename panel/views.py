@@ -205,7 +205,7 @@ def route(request, day):
         "lab": lab,
         "plan": plan,
         "stops": stops,
-        "day_label": slots.day_label(day),
+        "day_phrase": slots.day_phrase(day),
         "week": day.isoformat(),
         "late": [s for s in stops if s.late_min >= 1],
         "visit_count": sum(1 for s in stops if s.kind == "visit"),

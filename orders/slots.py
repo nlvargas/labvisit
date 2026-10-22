@@ -47,6 +47,17 @@ def day_label(day, today=None):
     return f"{WEEKDAYS[day.weekday()]} {day.day} {MONTHS[day.month - 1]}"
 
 
+def day_phrase(day, today=None):
+    """For running text: "mañana, miércoles 21 de octubre" or "el jueves 23 de octubre"."""
+    today = today or timezone.localdate()
+    long = f"{WEEKDAYS_LONG[day.weekday()]} {day.day} de {MONTHS_LONG[day.month - 1]}"
+    if day == today:
+        return f"hoy, {long}"
+    if day == today + timedelta(days=1):
+        return f"mañana, {long}"
+    return f"el {long}"
+
+
 def hour_label(start):
     start = timezone.localtime(start)
     return f"{start:%H:%M} a {start + SLOT:%H:%M}"

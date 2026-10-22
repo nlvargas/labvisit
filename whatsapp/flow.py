@@ -444,7 +444,7 @@ def _ask_slot(bot, conversation, day):
     rows = [(f"slot_{o.start.isoformat()}", slots.hour_label(o.start),
              f"{clp(o.discount_clp)} menos en la visita" if o.discount_clp else "") for o in offers]
     rows.append(("other_day", "Otro día"))
-    body = f"¿A qué hora el {day.label}? La enfermera llega dentro del rango que elijas."
+    body = f"¿A qué hora {slots.day_phrase(day.date)}? La enfermera llega dentro del rango que elijas."
     bot.list(body, "Elegir hora", rows)
 
 
