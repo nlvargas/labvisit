@@ -7,7 +7,7 @@
     <h1>Visita reservada</h1>
     <p class="booked-slot">{{ slot_label|capfirst }}</p>
     {% if quote.visit_discount_clp %}<p class="deal-note strong">Tienes {{ quote.visit_discount_clp|clp }} de descuento en la visita por elegir una hora en ruta.</p>{% endif %}
-    <p class="muted">La enfermera llega dentro de ese horario. El laboratorio te contactará al {{ order.contact_phone }} si necesita confirmar algo.</p>
+    <p class="muted">Llegamos dentro de ese horario. El laboratorio te contactará al {{ order.contact_phone }} si necesita confirmar algo.</p>
     {% if fasting_from %}
     <div class="fasting">
       <span class="fasting-label">Deja de comer a las</span>
@@ -17,7 +17,7 @@
     {% endif %}
     {% if order.lab.show_online_payment %}
     <button type="button" class="btn primary">Pagar en línea {{ quote.total_clp|clp }}</button>
-    <p class="muted small center">Paga ahora con tarjeta o transferencia y la enfermera no te cobra en la visita.</p>
+    <p class="muted small center">Paga ahora con tarjeta o transferencia y no pagas nada en la visita.</p>
     <a class="btn" href="{% url 'calendar_event' order.public_id %}">Agregar a mi calendario</a>
     {% else %}
     <a class="btn primary" href="{% url 'calendar_event' order.public_id %}">Agregar a mi calendario</a>

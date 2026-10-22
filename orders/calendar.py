@@ -21,7 +21,7 @@ def visit_ics(order, prep):
     alarms = []
     if prep.fasting_hours:
         alarms.append((prep.fasting_hours * 60, f"Desde ahora no comas: ayuno de {prep.fasting_hours} horas para tus exámenes"))
-    alarms.append((60, f"En una hora llega la enfermera de {order.lab.name}"))
+    alarms.append((60, f"En una hora llegamos a tomar tu muestra ({order.lab.name})"))
     body = [
         "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//labvisit//ES", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
         "BEGIN:VEVENT",

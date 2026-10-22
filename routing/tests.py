@@ -375,7 +375,7 @@ class TwoNursePlannerTests(PlannerTests):
         self.client.force_login(user)
         with self.settings(DEFAULT_LAB_SLUG="lab"):
             page = self.client.get(reverse("panel_route", args=["2026-10-20"]))
-        self.assertContains(page, "2 enfermeras")
+        self.assertContains(page, "2 profesionales en terreno")
         self.assertContains(page, "Ana")
         self.assertContains(page, "Bea")
 

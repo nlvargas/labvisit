@@ -12,7 +12,7 @@
         <p class="error">Hay visitas sin ubicación en el mapa, así que no se puede calcular la ruta. Se muestran por hora.</p>
       {% else %}
         {% if several %}
-        <p class="muted">{{ groups|length }} enfermeras. La primera sale a las {{ plan.depart_at|time:"H:i" }} y la última vuelve cerca de las {{ plan.back_at|time:"H:i" }}. Unos {{ plan.travel_min|floatformat:0 }} minutos manejando entre todas.</p>
+        <p class="muted">{{ groups|length }} profesionales en terreno. Las rutas parten a las {{ plan.depart_at|time:"H:i" }} y terminan cerca de las {{ plan.back_at|time:"H:i" }}. Unos {{ plan.travel_min|floatformat:0 }} minutos manejando en total.</p>
         {% else %}
         <p class="muted">Sale del laboratorio a las {{ plan.depart_at|time:"H:i" }} y vuelve cerca de las {{ plan.back_at|time:"H:i" }}. Unos {{ plan.travel_min|floatformat:0 }} minutos manejando en total.</p>
         {% endif %}
@@ -29,7 +29,7 @@
 
 {% for group in groups %}
 <section class="card">
-  {% if several or group.nurse %}<h2 class="nurse-title"><span class="nurse-dot" style="background: {{ group.color }}"></span>{{ group.nurse.name|default:"Enfermera" }}</h2>{% endif %}
+  {% if several or group.nurse %}<h2 class="nurse-title"><span class="nurse-dot" style="background: {{ group.color }}"></span>{{ group.nurse.name|default:"Profesional" }}</h2>{% endif %}
   {% if several and group.maps_url %}<p class="small"><a href="{{ group.maps_url }}" target="_blank" rel="noopener">Abrir su ruta en Google Maps</a></p>{% endif %}
   {% if group.nurse_url %}<p class="small">Link para su celular, con botones para avisar que va en camino y marcar cada visita: <a href="{{ group.nurse_url }}" target="_blank" rel="noopener">abrir</a> <button type="button" class="link small" data-copy="{{ group.nurse_url }}">copiar</button></p>{% endif %}
   <ol class="route">

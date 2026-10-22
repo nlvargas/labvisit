@@ -280,7 +280,7 @@ def nurse_action(request, token, public_id, action):
         stop = order.route_stops.filter(plan=planner.current_plan(nurse.lab, day)).first()
         minutes = max(5, round(stop.travel_min / 5) * 5) if stop and stop.travel_min else None
         first_name = order.patient_name.split(" ")[0] if order.patient_name else ""
-        text = (f"Hola{' ' + first_name if first_name else ''}, soy {nurse.name.split(' ')[0]}, enfermera de "
+        text = (f"Hola{' ' + first_name if first_name else ''}, soy {nurse.name.split(' ')[0]}, de "
                 f"{nurse.lab.name}. Voy en camino a tomar tu muestra"
                 f"{f', llego en unos {minutes} minutos' if minutes else ''}.")
         url = _patient_whatsapp(order, text)

@@ -19,8 +19,8 @@
   <h2>Rutas</h2>
   <div class="tiles">
     <div class="tile"><strong>{{ m.visits }}</strong><span>visitas{% if m.completed %}, {{ m.completed }} realizada{{ m.completed|pluralize }}{% endif %}</span></div>
-    <div class="tile"><strong>{{ m.visits_per_nurse_day|floatformat:1|default:"–" }}</strong><span>visitas por enfermera al día</span></div>
-    <div class="tile"><strong>{% if m.travel_per_nurse_day is not None %}{{ m.travel_per_nurse_day|floatformat:0 }} min{% else %}–{% endif %}</strong><span>manejando por enfermera al día</span></div>
+    <div class="tile"><strong>{{ m.visits_per_nurse_day|floatformat:1|default:"–" }}</strong><span>visitas por profesional al día</span></div>
+    <div class="tile"><strong>{% if m.travel_per_nurse_day is not None %}{{ m.travel_per_nurse_day|floatformat:0 }} min{% else %}–{% endif %}</strong><span>manejando por profesional al día</span></div>
     <div class="tile"><strong>{% if m.travel_per_visit is not None %}{{ m.travel_per_visit|floatformat:0 }} min{% else %}–{% endif %}</strong><span>de manejo por visita</span></div>
   </div>
   <p class="muted small">Manejo estimado de las rutas planificadas, con {{ lab.travel_speed_kmh|floatformat:0 }} km/h de promedio.</p>
@@ -33,9 +33,9 @@
     <div class="tile"><strong>{% if m.on_time_share is not None %}{% widthratio m.on_time_share 1 100 %}%{% else %}–{% endif %}</strong><span>de las llegadas, dentro de la hora reservada</span></div>
     <div class="tile"><strong>{% if m.real_service is not None %}{{ m.real_service|floatformat:0 }} min{% else %}–{% endif %}</strong><span>de atención real promedio{% if m.estimated_service %} (estimado: {{ m.estimated_service|floatformat:0 }} min){% endif %}</span></div>
   </div>
-  <p class="muted small">Con {{ m.arrived }} llegada{{ m.arrived|pluralize }} marcada{{ m.arrived|pluralize }} por las enfermeras desde su link de ruta.</p>
+  <p class="muted small">Con {{ m.arrived }} llegada{{ m.arrived|pluralize }} marcada{{ m.arrived|pluralize }} desde los links de ruta del equipo en terreno.</p>
   {% else %}
-  <p class="muted small">Todavía no hay visitas marcadas por las enfermeras. Cuando usen los botones "Llegué" y "Lista" de su link de ruta, aquí aparece la puntualidad y el tiempo real de cada atención.</p>
+  <p class="muted small">Todavía no hay visitas marcadas desde los links de ruta. Cuando usen los botones "Llegué" y "Lista" de su link de ruta, aquí aparece la puntualidad y el tiempo real de cada atención.</p>
   {% endif %}
 </section>
 

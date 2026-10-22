@@ -98,7 +98,7 @@ class MetricsAndNurseTests(TestCase):
         self.client.force_login(self.staff)
         week = timezone.localdate(order.slot_start).isoformat()
         response = self.client.get(reverse("panel_metrics") + f"?week={week}")
-        self.assertContains(response, "visitas por enfermera al día")
+        self.assertContains(response, "visitas por profesional al día")
         self.assertContains(response, "de secretaría ahorradas")
 
     def test_nurse_link_and_actions(self):

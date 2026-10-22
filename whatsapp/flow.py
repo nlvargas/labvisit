@@ -330,7 +330,7 @@ def _await_location(bot, conversation, incoming, fresh):
             return _out_of_range(bot, conversation)
         conversation.state = State.AWAIT_ADDRESS
         return bot.text("Gracias. Ahora escribe tu dirección exacta, con número y depto o casa si aplica, "
-                        "para que la enfermera llegue sin problemas.")
+                        "para que lleguemos sin problemas.")
     if incoming.kind == "text" and incoming.text.strip():
         return _typed_address(bot, conversation, incoming.text.strip()[:300])
     _ask_location(bot, conversation)
@@ -444,7 +444,7 @@ def _ask_slot(bot, conversation, day):
     rows = [(f"slot_{o.start.isoformat()}", slots.hour_label(o.start),
              f"{clp(o.discount_clp)} menos en la visita" if o.discount_clp else "") for o in offers]
     rows.append(("other_day", "Otro día"))
-    body = f"¿A qué hora {slots.day_phrase(day.date)}? La enfermera llega dentro del rango que elijas."
+    body = f"¿A qué hora {slots.day_phrase(day.date)}? Llegamos dentro del rango que elijas."
     bot.list(body, "Elegir hora", rows)
 
 

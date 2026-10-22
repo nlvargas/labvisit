@@ -21,8 +21,8 @@
     </div>
   </fieldset>
   {% endfor %}
-  <p class="muted small">La enfermera llega dentro de la hora que elijas. Por ejemplo, 09:00 es entre 09:00 y 10:00.</p>
-  {% if has_deals %}<p class="muted small">Las horas con descuento calzan con la ruta que la enfermera ya tiene ese día.</p>{% endif %}
+  <p class="muted small">Llegamos dentro de la hora que elijas. Por ejemplo, 09:00 es entre 09:00 y 10:00.</p>
+  {% if has_deals %}<p class="muted small">Las horas con descuento calzan con la ruta que ya tenemos ese día.</p>{% endif %}
   <label class="field">
     <span class="small strong">{{ booking_form.contact_phone.label }}</span>
     {{ booking_form.contact_phone }}
