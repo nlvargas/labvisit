@@ -23,6 +23,7 @@ class LabAdmin(admin.ModelAdmin):
         (None, {"fields": ["name", "slug", "is_active", "phone", "whatsapp", "whatsapp_phone_number_id"]}),
         ("Style", {"fields": ["brand_color", "font", "corners", "logo", "tagline", "address_line", "website_url",
                               "results_url"]}),
+        ("Fonasa", {"fields": ["fonasa_level"]}),
         ("Demo", {"fields": ["show_online_payment"]}),
         ("Home visits", {"fields": ["latitude", "longitude", "visit_base_fee_clp", "visit_fee_per_km_clp",
                                     "max_visit_km", "booking_days_ahead", "min_notice_hours"]}),

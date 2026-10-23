@@ -347,6 +347,31 @@ class QuoteAndPrepTests(TestCase):
         self.assertEqual(build_quote(exams, coverage, 25000).total_clp, 7605 + 11130 + 25000)
         self.assertTrue(quote.missing_prices)
 
+    def test_fonasa_quote_uses_the_mle_copay_of_the_lab_level(self):
+        fonasa = Coverage.objects.get(lab=self.lab, kind="fonasa")
+        hemograma = Exam.objects.get(lab=self.lab, name="Hemograma")
+        electrolitos = Exam.objects.get(lab=self.lab, name="Electrolitos plasmáticos")
+        ldl = Exam.objects.get(lab=self.lab, name="Colesterol LDL")
+        quote = build_quote([hemograma, electrolitos, ldl], fonasa)
+        self.assertEqual([l.amount_clp for l in quote.lines], [3480, 1450 * 3, 3310])
+        self.lab.fonasa_level = 1
+        self.lab.save()
+        fonasa.refresh_from_db()
+        self.assertEqual(build_quote([hemograma], fonasa).lines[0].amount_clp, 1580)
+        self.lab.fonasa_level = None
+        self.lab.save()
+        fonasa.refresh_from_db()
+        self.assertEqual(build_quote([hemograma], fonasa).lines[0].amount_clp, 5070)
+        isapre = Coverage.objects.get(lab=self.lab, kind="isapre")
+        self.assertEqual(build_quote([hemograma], isapre).lines[0].amount_clp, 7605)
+
+    def test_fonasa_codes_parse(self):
+        from catalog import fonasa
+        self.assertEqual(fonasa.parse_codes("03-02-100 0302101"), [("0302100", 1), ("0302101", 1)])
+        self.assertEqual(fonasa.parse_codes("0302032x3"), [("0302032", 3)])
+        self.assertIsNone(fonasa.copay("0302100 9999999", 2))
+        self.assertIsNone(fonasa.copay("", 2))
+
     def test_prep_takes_longest_fasting_and_dedupes(self):
         exams = list(Exam.objects.filter(lab=self.lab, name__in=["Glicemia", "Perfil lipídico", "Orina completa", "Urocultivo"]))
         prep = merge_prep(exams)

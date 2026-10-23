@@ -1,7 +1,8 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from catalog.demo_catalog import COVERAGES, EXAMS, LAB_LOCATION, LAB_STYLE, OPENING_HOURS, VISIT_FEE
+from catalog.demo_catalog import (COVERAGES, EXAMS, FONASA_CODES, FONASA_LEVEL, LAB_LOCATION, LAB_STYLE,
+                                  OPENING_HOURS, VISIT_FEE)
 from catalog.models import Coverage, Exam, Price
 from labs.models import Lab, OpeningHours
 
@@ -15,7 +16,8 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, slug, name, **options):
         lab, _ = Lab.objects.update_or_create(slug=slug, defaults={
-            "name": name, "latitude": LAB_LOCATION[0], "longitude": LAB_LOCATION[1], **VISIT_FEE, **LAB_STYLE,
+            "name": name, "latitude": LAB_LOCATION[0], "longitude": LAB_LOCATION[1], "fonasa_level": FONASA_LEVEL,
+            **VISIT_FEE, **LAB_STYLE,
         })
         if not lab.opening_hours.exists():
             OpeningHours.objects.bulk_create(
@@ -36,6 +38,7 @@ class Command(BaseCommand):
                     "sample_type": sample,
                     "fasting_hours": fasting,
                     "prep_text": prep,
+                    "fonasa_code": FONASA_CODES.get(exam_name, ""),
                     "active": True,
                 },
             )

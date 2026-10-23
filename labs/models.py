@@ -64,6 +64,10 @@ class Lab(models.Model):
     address_line = models.CharField(max_length=200, blank=True, help_text="Shown in the footer.")
     website_url = models.URLField(blank=True)
     results_url = models.URLField(blank=True, help_text="Link to the lab's results portal, shown at the top.")
+    fonasa_level = models.PositiveSmallIntegerField(
+        null=True, blank=True, choices=[(1, "Nivel 1"), (2, "Nivel 2"), (3, "Nivel 3")],
+        help_text="Fonasa MLE agreement level. Fonasa prices then come from the public tariff for each exam's code. "
+                  "Blank uses the lab's own Fonasa prices.")
     show_online_payment = models.BooleanField(
         default=False, help_text="Shows a 'Pagar en línea' button after booking. It doesn't charge anything yet.")
 

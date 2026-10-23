@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from django.conf import settings
 from django.db import transaction
 
-from catalog.models import Exam, Price
+from catalog import fonasa
+from catalog.models import Coverage, Exam, Price
 from labs.geo import visit_fee
 
 from .matching import MATCHER_VERSION, CatalogIndex, split_entry
@@ -168,7 +169,11 @@ class Quote:
 
 def build_quote(exams, coverage, visit_fee_clp=0, visit_discount_clp=0):
     prices = dict(Price.objects.filter(exam__in=exams, coverage=coverage).values_list("exam_id", "amount_clp"))
-    lines = [QuoteLine(exam, prices.get(exam.id)) for exam in exams]
+    level = coverage.lab.fonasa_level if coverage and coverage.kind == Coverage.Kind.FONASA else None
+    lines = []
+    for exam in exams:
+        amount = fonasa.copay(exam.fonasa_code, level) if level else None
+        lines.append(QuoteLine(exam, amount if amount is not None else prices.get(exam.id)))
     exams_clp = sum(l.amount_clp for l in lines if l.amount_clp is not None)
     visit_fee = visit_fee_clp or 0
     discount = min(visit_discount_clp or 0, visit_fee)
