@@ -22,6 +22,7 @@
       data-details-form>
   {% csrf_token %}
   <h1>Previsión y dirección</h1>
+  {% if order.details_prefilled %}<p class="prefill-note small">Completamos estos datos con los de tu última reserva. Si cambiaron, modifícalos aquí.</p>{% endif %}
   {% include "orders/partials/details_fields.html" with form=details_form %}
   <div id="details-saved" class="small" aria-live="polite">{% include "orders/partials/details_saved.html" with form=details_form %}</div>
   <button type="submit" class="btn primary" data-continue disabled>Continuar</button>

@@ -276,6 +276,56 @@ class FlowTests(TestCase):
         self.assertEqual(order.status, Order.Status.READY)
         self.assertEqual((order.coverage, order.address, order.visit_fee_clp), (coverage, "Av. Italia 1000", 19000))
 
+    def booked_order(self, **fields):
+        defaults = dict(lab=self.lab, status=Order.Status.READY, patient_rut="11.111.111-1", patient_rut_valid=True,
+                        coverage=Coverage.objects.get(lab=self.lab, kind="isapre"), isapre="Colmena",
+                        address="Av. Italia 1000, Providencia", latitude=-33.44, longitude=-70.62, distance_km=2.1,
+                        apartment="Depto 504", visit_fee_clp=15000, slot_start=timezone.now(), booked_at=timezone.now())
+        defaults.update(fields)
+        return Order.objects.create(**defaults)
+
+    def test_reading_prefills_details_from_last_booking(self):
+        previous = self.booked_order()
+        order = Order.objects.create(lab=self.lab, file=SimpleUploadedFile("o.jpg", b"x"), content_type="image/jpeg")
+        process_order(order.pk)
+        order.refresh_from_db()
+        self.assertTrue(order.details_prefilled)
+        self.assertEqual((order.coverage, order.isapre), (previous.coverage, "Colmena"))
+        self.assertEqual((order.address, order.apartment, order.latitude), (previous.address, "Depto 504", -33.44))
+        self.assertIsNotNone(order.visit_fee_clp)
+        response = self.client.get(reverse("order_status", args=[order.public_id]))
+        self.assertEqual(response["HX-Refresh"], "true")
+        page = self.client.get(reverse("order", args=[order.public_id]))
+        self.assertContains(page, "tu última reserva")
+        fonasa = Coverage.objects.get(lab=self.lab, kind="fonasa")
+        self.client.post(reverse("order_details", args=[order.public_id]), {"coverage": fonasa.pk},
+                         HTTP_HX_REQUEST="true")
+        order.refresh_from_db()
+        self.assertEqual((order.coverage, order.isapre), (fonasa, ""))
+
+    def test_prefill_keeps_what_the_patient_already_chose(self):
+        self.booked_order()
+        fonasa = Coverage.objects.get(lab=self.lab, kind="fonasa")
+        order = Order.objects.create(lab=self.lab, file=SimpleUploadedFile("o.jpg", b"x"), content_type="image/jpeg",
+                                     coverage=fonasa)
+        process_order(order.pk)
+        order.refresh_from_db()
+        self.assertEqual(order.coverage, fonasa)
+        self.assertEqual(order.address, "Av. Italia 1000, Providencia")
+
+    def test_no_prefill_without_a_previous_booking(self):
+        self.booked_order(patient_rut="12.345.678-5")
+        self.booked_order(slot_start=None, booked_at=None)
+        self.booked_order(lab=self.other_lab)
+        order = Order.objects.create(lab=self.lab, file=SimpleUploadedFile("o.jpg", b"x"), content_type="image/jpeg")
+        process_order(order.pk)
+        order.refresh_from_db()
+        self.assertFalse(order.details_prefilled)
+        self.assertIsNone(order.coverage)
+        self.assertEqual(order.address, "")
+        response = self.client.get(reverse("order_status", args=[order.public_id]))
+        self.assertFalse(response.has_header("HX-Refresh"))
+
     def test_order_from_other_lab_is_hidden(self):
         order = Order.objects.create(lab=self.other_lab, status=Order.Status.READY)
         response = self.client.get(reverse("order", args=[order.public_id]))

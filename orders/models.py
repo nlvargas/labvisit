@@ -65,6 +65,7 @@ class Order(models.Model):
     arrived_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     staff_notes = models.TextField(blank=True)
+    details_prefilled = models.BooleanField(default=False, help_text="Coverage or address copied from the patient's last booking.")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

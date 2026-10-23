@@ -6,6 +6,7 @@ from django.conf import settings
 from django.db import transaction
 
 from catalog.models import Exam, Price
+from labs.geo import visit_fee
 
 from .matching import MATCHER_VERSION, CatalogIndex, split_entry
 from .models import Order, OrderLine
@@ -74,6 +75,42 @@ def process_order(order_id):
         "found" if order.doctor_rut else "missing",
         "found" if order.order_date else "missing",
     )
+    prefill_details(order)
+
+
+ADDRESS_FIELDS = ["address", "address_place_id", "latitude", "longitude", "apartment", "address_notes", "distance_km"]
+
+
+def prefill_details(order):
+    """Copies coverage and address from the patient's last booking at this lab into the fields still empty.
+    The patient sees them filled in and can change them."""
+    if not order.patient_rut_valid:
+        return False
+    previous = (Order.objects.filter(lab=order.lab, patient_rut=order.patient_rut, slot_start__isnull=False)
+                .exclude(pk=order.pk).select_related("coverage").order_by("-booked_at", "-created_at").first())
+    if previous is None:
+        return False
+    with transaction.atomic():
+        current = Order.objects.select_for_update().get(pk=order.pk)
+        fields = []
+        if current.coverage_id is None and previous.coverage and previous.coverage.active:
+            current.coverage, current.isapre = previous.coverage, previous.isapre
+            fields += ["coverage", "isapre"]
+        if not current.address and previous.address:
+            fee = visit_fee(order.lab, previous.distance_km)
+            if fee is not None:
+                for name in ADDRESS_FIELDS:
+                    setattr(current, name, getattr(previous, name))
+                current.visit_fee_clp = fee
+                fields += ADDRESS_FIELDS + ["visit_fee_clp"]
+        if not fields:
+            return False
+        current.details_prefilled = True
+        current.save(update_fields=fields + ["details_prefilled"])
+    logger.info("Order %s: prefilled %s from the patient's booking %s", order.public_id,
+                "coverage and address" if "address" in fields and "coverage" in fields
+                else ("address" if "address" in fields else "coverage"), previous.public_id)
+    return True
 
 
 def _log_line(order, line):

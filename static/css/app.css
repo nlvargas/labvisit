@@ -170,6 +170,7 @@ input[type=password], textarea { width: 100%; padding: 12px; border: 1px solid v
 .lab-name { font-size: 20px; font-weight: 700; }
 .reading-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--accent-soft); margin-top: 12px; }
 .reading-strip.is-warn { background: var(--warn-soft); color: var(--warn); }
+.prefill-note { margin: 0 0 12px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-text); }
 .reading-strip .muted { flex-basis: 100%; }
 .reading-strip .tick { color: var(--accent-text); font-weight: 700; }
 .mini-spinner { width: 16px; height: 16px; flex-shrink: 0; border: 2px solid var(--accent); border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }

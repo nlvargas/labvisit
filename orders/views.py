@@ -149,7 +149,10 @@ def order_status(request, public_id):
     order = _order(request, public_id)
     if order.is_reading:
         return HttpResponse(status=204)
-    return render(request, "orders/partials/reading_status.html", {"order": order})
+    response = render(request, "orders/partials/reading_status.html", {"order": order})
+    if order.details_prefilled:
+        response["HX-Refresh"] = "true"
+    return response
 
 
 @require_POST
