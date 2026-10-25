@@ -44,7 +44,7 @@
   <div class="tiles">
     <div class="tile"><strong>{{ m.bookings }}</strong><span>reservas hechas por los pacientes{% if m.bookings_whatsapp %}, {{ m.bookings_whatsapp }} por WhatsApp{% endif %}</span></div>
     <div class="tile"><strong>{{ m.bookings_off_hours }}</strong><span>fuera de horario de oficina (antes de 9:00, después de 18:00 o fin de semana)</span></div>
-    <div class="tile"><strong>~{{ m.desk_hours|floatformat:1 }} h</strong><span>de secretaría ahorradas (estimando {{ m.desk_min_per_booking }} min por reserva)</span></div>
+    <div class="tile"><strong>~{{ m.desk_hours|floatformat:1 }} h</strong><span>de agendamiento manual ahorradas (estimando {{ m.desk_min_per_booking }} min por reserva)</span></div>
     <div class="tile"><strong>{% if m.conversion is not None %}{% widthratio m.conversion 1 100 %}%{% else %}–{% endif %}</strong><span>de las {{ m.quotes }} cotizaciones terminaron en reserva{% if m.median_to_book is not None %}, {% if m.median_to_book < 1 %}en menos de 1 min{% else %}en {{ m.median_to_book|floatformat:0 }} min{% endif %} (mediana){% endif %}</span></div>
   </div>
 </section>
