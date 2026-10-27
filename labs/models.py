@@ -71,6 +71,20 @@ class Lab(models.Model):
     show_online_payment = models.BooleanField(
         default=False, help_text="Shows a 'Pagar en línea' button after booking. It doesn't charge anything yet.")
 
+    @property
+    def on_brand_color(self):
+        """White or near-black, whichever reads better on the brand color (WCAG contrast 4.5)."""
+        value = (self.brand_color or "").lstrip("#")
+        if len(value) == 3:
+            value = "".join(c * 2 for c in value)
+        try:
+            channels = [int(value[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        except ValueError:
+            return "#ffffff"
+        linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+        luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+        return "#ffffff" if 1.05 / (luminance + 0.05) >= 4.5 else "#111111"
+
     class Meta:
         ordering = ["name"]
 

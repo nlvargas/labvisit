@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ lab.font_query }}&display=swap">
   {% endif %}
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
-  {% if lab %}<style>:root { --brand: {{ lab.brand_color }}; --font: {{ lab.font_family|safe }}; --radius: {{ lab.radius }}; --radius-sm: {{ lab.radius_small }}; --pill: {{ lab.pill }}; }</style>{% endif %}
+  {% if lab %}<style>:root { --brand: {{ lab.brand_color }}; --on-brand: {{ lab.on_brand_color }}; --font: {{ lab.font_family|safe }}; --radius: {{ lab.radius }}; --radius-sm: {{ lab.radius_small }}; --pill: {{ lab.pill }}; }</style>{% endif %}
   {% endwith %}
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
 </head>
