@@ -19,7 +19,9 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font); min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+body > main { flex: 1 0 auto; width: 100%; box-sizing: border-box; }
+body > footer { flex-shrink: 0; }
 a { color: var(--accent-text); }
 .page { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
