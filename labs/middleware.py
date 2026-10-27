@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.http import HttpResponsePermanentRedirect
+from django.http.request import split_domain_port, validate_host
 
 from .models import Lab
 
@@ -29,7 +30,10 @@ class StripWwwMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        host = request.get_host()
+        host = request.META.get("HTTP_HOST", "")
         if host.lower().startswith("www."):
-            return HttpResponsePermanentRedirect(f"{request.scheme}://{host[4:]}{request.get_full_path()}")
+            bare = host[4:]
+            domain, _ = split_domain_port(bare)
+            if domain and validate_host(domain, settings.ALLOWED_HOSTS):
+                return HttpResponsePermanentRedirect(f"{request.scheme}://{bare}{request.get_full_path()}")
         return self.get_response(request)
