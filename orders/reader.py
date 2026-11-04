@@ -114,7 +114,7 @@ class GeminiReader:
     name = "gemini"
 
     def __init__(self, api_key, model, fallback_models=()):
-        self.client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=45_000))
+        self.client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=20_000))
         self.model = model
         self.fallback_models = [m for m in fallback_models if m and m != model]
         self.rounds = 4
