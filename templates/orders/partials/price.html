@@ -14,7 +14,8 @@
     </tfoot>
   </table>
   {% if quote.missing_prices %}<p class="muted small">Algunos precios los confirma el laboratorio.</p>{% endif %}
-  {% if order.coverage.kind == "fonasa" and order.lab.fonasa_level %}<p class="muted small">Precios con bono Fonasa de libre elección, nivel {{ order.lab.fonasa_level }}. Es lo que pagas tú y Fonasa paga el resto.</p>{% endif %}
+  {% if quote.fonasa_bonus_clp %}<p class="muted small">Precios con el bono Fonasa ya descontado: Fonasa cubre {{ quote.fonasa_bonus_clp|clp }} de estos exámenes.</p>
+  {% elif order.coverage.kind == "fonasa" and order.lab.fonasa_level %}<p class="muted small">Precios con bono Fonasa de libre elección, nivel {{ order.lab.fonasa_level }}. Es lo que pagas tú y Fonasa paga el resto.</p>{% endif %}
   {% endif %}
   {% if selected_count %}
     <a class="btn primary" href="{% url 'schedule' order.public_id %}">Elegir horario</a>

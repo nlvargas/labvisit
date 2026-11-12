@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
 
-from catalog.models import Coverage, Exam
+from catalog.models import Coverage, Exam, Price
 from labs.geo import distance_km, visit_fee
 from labs.models import Lab, OpeningHours
 
@@ -364,6 +364,27 @@ class QuoteAndPrepTests(TestCase):
         self.assertEqual(build_quote([hemograma], fonasa).lines[0].amount_clp, 5070)
         isapre = Coverage.objects.get(lab=self.lab, kind="isapre")
         self.assertEqual(build_quote([hemograma], isapre).lines[0].amount_clp, 7605)
+
+    def test_fonasa_bonus_is_taken_off_the_published_price(self):
+        from catalog import fonasa as tariff
+        fonasa = Coverage.objects.get(lab=self.lab, kind="fonasa")
+        hemograma = Exam.objects.get(lab=self.lab, name="Hemograma")
+        electrolitos = Exam.objects.get(lab=self.lab, name="Electrolitos plasmáticos")
+        Lab.objects.filter(pk=self.lab.pk).update(fonasa_bonus_from_price=True)
+        fonasa.refresh_from_db()
+        quote = build_quote([hemograma, electrolitos], fonasa)
+        self.assertEqual(tariff.bonus("0301045"), 1590)
+        self.assertEqual(quote.lines[0].amount_clp, 5070 - 1590)
+        published = Price.objects.get(exam=electrolitos, coverage=fonasa).amount_clp
+        bonus = tariff.bonus(electrolitos.fonasa_code)
+        self.assertEqual(quote.lines[1].amount_clp, published - min(bonus, published))
+        self.assertEqual(quote.fonasa_bonus_clp, 1590 + min(bonus, published))
+        Price.objects.filter(exam=hemograma, coverage=fonasa).delete()
+        particular, _ = Coverage.objects.get_or_create(lab=self.lab, kind="private", defaults={"name": "Particular"})
+        Price.objects.update_or_create(exam=hemograma, coverage=particular, defaults={"amount_clp": 7605})
+        self.assertEqual(build_quote([hemograma], fonasa).lines[0].amount_clp, 7605 - 1590)
+        isapre = Coverage.objects.get(lab=self.lab, kind="isapre")
+        self.assertEqual(build_quote([hemograma], isapre).fonasa_bonus_clp, 0)
 
     def test_fonasa_codes_parse(self):
         from catalog import fonasa

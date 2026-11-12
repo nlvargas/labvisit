@@ -26,6 +26,20 @@ def parse_codes(text):
     return items
 
 
+def bonus(codes):
+    """What Fonasa covers for an exam: the same peso amount at every level. None if a code isn't in the tariff."""
+    items = parse_codes(codes or "")
+    if not items:
+        return None
+    total = 0
+    for code, quantity in items:
+        row = tariff().get(code)
+        if row is None:
+            return None
+        total += (int(row["total_1"]) - int(row["copay_1"])) * quantity
+    return total
+
+
 def copay(codes, level):
     """What a Fonasa patient pays for an exam at a lab of that level, or None if a code isn't in the tariff."""
     items = parse_codes(codes or "")

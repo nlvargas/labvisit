@@ -68,6 +68,11 @@ class Lab(models.Model):
         null=True, blank=True, choices=[(1, "Nivel 1"), (2, "Nivel 2"), (3, "Nivel 3")],
         help_text="Fonasa MLE agreement level. Fonasa prices then come from the public tariff for each exam's code. "
                   "Blank uses the lab's own Fonasa prices.")
+    fonasa_bonus_from_price = models.BooleanField(
+        default=False,
+        help_text="The lab's published prices are before the Fonasa bono. A Fonasa patient pays the lab's Fonasa "
+                  "price (or its private price when it has none) minus what Fonasa covers for the exam's code. "
+                  "Takes precedence over the Fonasa level.")
     show_online_payment = models.BooleanField(
         default=False, help_text="Shows a 'Pagar en línea' button after booking. It doesn't charge anything yet.")
 

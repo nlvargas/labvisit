@@ -172,15 +172,32 @@ class Quote:
     total_clp: int
     missing_prices: bool
     visit_discount_clp: int = 0
+    fonasa_bonus_clp: int = 0
 
 
 def build_quote(exams, coverage, visit_fee_clp=0, visit_discount_clp=0):
     prices = dict(Price.objects.filter(exam__in=exams, coverage=coverage).values_list("exam_id", "amount_clp"))
-    level = coverage.lab.fonasa_level if coverage and coverage.kind == Coverage.Kind.FONASA else None
-    lines = []
+    is_fonasa = coverage is not None and coverage.kind == Coverage.Kind.FONASA
+    from_price = is_fonasa and coverage.lab.fonasa_bonus_from_price
+    level = coverage.lab.fonasa_level if is_fonasa and not from_price else None
+    if from_price:
+        private = dict(Price.objects.filter(exam__in=exams, coverage__kind=Coverage.Kind.PRIVATE,
+                                            coverage__lab=coverage.lab).values_list("exam_id", "amount_clp"))
+    lines, bonus_total = [], 0
     for exam in exams:
-        amount = fonasa.copay(exam.fonasa_code, level) if level else None
-        lines.append(QuoteLine(exam, amount if amount is not None else prices.get(exam.id)))
+        amount = prices.get(exam.id)
+        if from_price:
+            base = amount if amount is not None else private.get(exam.id)
+            bonus = fonasa.bonus(exam.fonasa_code)
+            if base is not None and bonus is not None:
+                covered = min(bonus, base)
+                amount, bonus_total = base - covered, bonus_total + covered
+            else:
+                amount = base
+        elif level:
+            copay = fonasa.copay(exam.fonasa_code, level)
+            amount = copay if copay is not None else amount
+        lines.append(QuoteLine(exam, amount))
     exams_clp = sum(l.amount_clp for l in lines if l.amount_clp is not None)
     visit_fee = visit_fee_clp or 0
     discount = min(visit_discount_clp or 0, visit_fee)
@@ -191,6 +208,7 @@ def build_quote(exams, coverage, visit_fee_clp=0, visit_discount_clp=0):
         total_clp=exams_clp + visit_fee - discount,
         missing_prices=any(l.amount_clp is None for l in lines),
         visit_discount_clp=discount,
+        fonasa_bonus_clp=bonus_total,
     )
 
 
