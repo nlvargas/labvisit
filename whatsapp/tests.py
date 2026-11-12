@@ -177,6 +177,80 @@ class FlowTests(TestCase):
         replies = self.send("text", text="Los Leones 100, Providencia")
         self.assertIn("Visita a domicilio: $18.000", replies[-2]["body"])
 
+    def test_clear_exams_ask_the_coverage_in_the_same_message(self):
+        self.send("text", text="hola")
+        replies = self.send("text", text="hemograma, glicemia")
+        review = replies[-1]
+        self.assertIn(review["kind"], ("buttons", "list"))
+        self.assertIn("1. Hemograma\n2. Glicemia", review["body"])
+        self.assertIn("previsión", review["body"])
+        fonasa = Coverage.objects.get(lab=self.lab, kind="fonasa")
+        ids = [row[0] for row in review.get("rows") or review["buttons"]]
+        self.assertIn(f"cov_{fonasa.pk}", ids)
+        self.assertEqual(ids[-1], "exams_edit")
+        replies = self.send("reply", reply_id=f"cov_{fonasa.pk}")
+        self.assertEqual(replies[-1]["kind"], "location_request")
+        self.assertEqual(self.conversation().order.coverage, fonasa)
+
+    def test_typing_the_coverage_on_the_review_sets_it(self):
+        self.send("text", text="hola")
+        self.send("text", text="hemograma")
+        replies = self.send("text", text="Fonasa")
+        self.assertEqual(replies[-1]["kind"], "location_request")
+        self.assertEqual(self.conversation().order.coverage.kind, "fonasa")
+
+    def prefilled_review(self):
+        self.send("text", text="hola")
+        self.send("text", text="hemograma")
+        Order.objects.filter(pk=self.conversation().order_id).update(
+            details_prefilled=True, coverage=Coverage.objects.get(lab=self.lab, kind="fonasa"),
+            address="Plaza de Armas 444", apartment="depto 1203", address_notes="timbre 1203",
+            latitude=-33.4378, longitude=-70.6505, distance_km=2.3, visit_fee_clp=19500)
+        return self.send("text", text="quitar 9")
+
+    def test_returning_patient_confirms_last_details_with_one_tap(self):
+        review = self.prefilled_review()[-1]
+        self.assertEqual(review["kind"], "buttons")
+        self.assertIn("Previsión: Fonasa", review["body"])
+        self.assertIn("Dirección: Plaza de Armas 444, depto 1203", review["body"])
+        self.assertEqual([b[0] for b in review["buttons"]], ["prefill_ok", "exams_edit", "prefill_change"])
+        replies = self.send("reply", reply_id="prefill_ok")
+        self.assertIn("Visita en: Plaza de Armas 444, depto 1203", replies[-2]["body"])
+        self.assertEqual(replies[-1]["kind"], "list")
+        self.assertEqual(self.conversation().state, Conversation.State.AWAIT_DAY)
+
+    def test_returning_patient_can_change_the_details(self):
+        self.prefilled_review()
+        replies = self.send("reply", reply_id="prefill_change")
+        self.assertIn("previsional", replies[-1]["body"])
+        order = self.conversation().order
+        self.assertIsNone(order.coverage)
+        self.assertEqual((order.address, order.apartment, order.address_notes), ("", "", ""))
+        self.assertFalse(order.details_prefilled)
+
+    @override_settings(GOOGLE_MAPS_SERVER_KEY="test")
+    def test_new_address_drops_the_old_depto_and_notes(self):
+        self.prefilled_review()
+        self.send("reply", reply_id="prefill_change")
+        self.send("reply", reply_id=f"cov_{Coverage.objects.get(lab=self.lab, kind='fonasa').pk}")
+        with mock.patch("whatsapp.flow.geocode", return_value=Place(-33.4378, -70.6505, "Otra 1, Santiago", "p9")):
+            self.send("text", text="Otra 1, Santiago")
+        order = self.conversation().order
+        self.assertEqual((order.apartment, order.address_notes), ("", ""))
+
+    @override_settings(GOOGLE_MAPS_SERVER_KEY="test")
+    def test_exact_address_skips_the_confirmation(self):
+        self.to_location_step()
+        place = Place(-33.4378, -70.6505, "Plaza de Armas 444, Santiago, Chile", "pid1", ("street_address",))
+        with mock.patch("whatsapp.flow.geocode", return_value=place):
+            replies = self.send("text", text="Plaza de Armas 444, Santiago")
+        self.assertIn("Visita en: Plaza de Armas 444, Santiago, Chile", replies[-2]["body"])
+        self.assertEqual(replies[-1]["kind"], "list")
+        self.assertEqual(self.conversation().state, Conversation.State.AWAIT_DAY)
+        replies = self.send("text", text="Cambiar dirección")
+        self.assertIn("Escribe la dirección de nuevo", replies[-1]["body"])
+        self.assertEqual(self.conversation().state, Conversation.State.AWAIT_LOCATION)
+
     def test_taken_slot_is_offered_again(self):
         self.to_location_step()
         self.send("location", latitude=-33.4378, longitude=-70.6505)
@@ -464,3 +538,26 @@ class VisitReminderTests(TestCase):
         self.assertIsNotNone(order.visit_reminder_sent_at)
         Order.objects.filter(pk=order.pk).update(visit_reminder_sent_at=None)  # what slots.book does on a new hour
         self.assertEqual(self.send(self.at(22, 18, 30)), 1)
+
+
+class WhatsAppPrefillTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", stdout=open("/dev/null", "w"))
+        cls.lab = Lab.objects.get(slug="biodata")
+
+    def test_whatsapp_reuses_a_booking_only_from_the_same_phone(self):
+        from django.utils import timezone
+        from orders.services import prefill_details
+        fonasa = Coverage.objects.get(lab=self.lab, kind="fonasa")
+        Order.objects.create(lab=self.lab, patient_rut="12.345.678-5", patient_rut_valid=True, coverage=fonasa,
+                             address="Plaza de Armas 444", distance_km=2.3, contact_phone="+56 9 9999 0000",
+                             slot_start=timezone.now(), booked_at=timezone.now())
+        other = Order.objects.create(lab=self.lab, channel=Order.Channel.WHATSAPP, contact_phone="56911112222",
+                                     patient_rut="12.345.678-5", patient_rut_valid=True)
+        self.assertFalse(prefill_details(other))
+        same = Order.objects.create(lab=self.lab, channel=Order.Channel.WHATSAPP, contact_phone="56999990000",
+                                    patient_rut="12.345.678-5", patient_rut_valid=True)
+        self.assertTrue(prefill_details(same))
+        web = Order.objects.create(lab=self.lab, patient_rut="12.345.678-5", patient_rut_valid=True)
+        self.assertTrue(prefill_details(web))

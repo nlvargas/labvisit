@@ -82,6 +82,11 @@ def process_order(order_id):
 ADDRESS_FIELDS = ["address", "address_place_id", "latitude", "longitude", "apartment", "address_notes", "distance_km"]
 
 
+def _same_phone(a, b):
+    a, b = ("".join(ch for ch in phone if ch.isdigit())[-9:] for phone in (a, b))
+    return len(a) == 9 and a == b
+
+
 def prefill_details(order):
     """Copies coverage and address from the patient's last booking at this lab into the fields still empty.
     The patient sees them filled in and can change them."""
@@ -90,6 +95,8 @@ def prefill_details(order):
     previous = (Order.objects.filter(lab=order.lab, patient_rut=order.patient_rut, slot_start__isnull=False)
                 .exclude(pk=order.pk).select_related("coverage").order_by("-booked_at", "-created_at").first())
     if previous is None:
+        return False
+    if order.channel == Order.Channel.WHATSAPP and not _same_phone(previous.contact_phone, order.contact_phone):
         return False
     with transaction.atomic():
         current = Order.objects.select_for_update().get(pk=order.pk)

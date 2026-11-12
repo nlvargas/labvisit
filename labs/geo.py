@@ -34,6 +34,7 @@ class Place:
     longitude: float
     address: str
     place_id: str
+    types: tuple = ()
 
 
 def geocode(query, lab):
@@ -49,7 +50,7 @@ def geocode(query, lab):
         response = httpx.post(
             "https://places.googleapis.com/v1/places:searchText",
             json=body,
-            headers={"X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.formattedAddress,places.location"},
+            headers={"X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.id,places.formattedAddress,places.location,places.types"},
             timeout=10,
         )
         response.raise_for_status()
@@ -61,4 +62,4 @@ def geocode(query, lab):
         return None
     place = places[0]
     return Place(place["location"]["latitude"], place["location"]["longitude"],
-                 place.get("formattedAddress", ""), place.get("id", ""))
+                 place.get("formattedAddress", ""), place.get("id", ""), tuple(place.get("types", ())))

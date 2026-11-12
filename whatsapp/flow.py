@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 State = Conversation.State
 RESTART_WORDS = {"reiniciar", "menu", "inicio", "empezar", "comenzar"}
 GREETINGS = {"hola", "holi", "ola", "buenas", "buenos", "buen", "alo", "hi", "hello", "saludos"}
+# Google place types that pin a single building: no need to ask the patient to confirm the address
+PRECISE_PLACE_TYPES = {"street_address", "premise", "subpremise"}
 EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf"}
 
 
@@ -215,8 +217,42 @@ def _send_review(bot, conversation, not_found=()):
         return bot.text("No encontré exámenes. Escríbelos separados por coma, por ejemplo: hemograma, glicemia." + notes)
     listing = "\n".join(f"{i}. {line.exam.name}" for i, line in enumerate(lines, 1))
     conversation.state = State.REVIEW_EXAMS
-    bot.buttons(f"Estos son tus exámenes:\n{listing}{notes}\n\n¿Está bien?",
-                [("exams_ok", "Sí, continuar"), ("exams_edit", "Quitar o agregar")])
+    if _prefill_ready(order):
+        return bot.buttons(f"Estos son tus exámenes:\n{listing}{notes}\n\nUsaremos los datos de tu última reserva:\n"
+                           f"• Previsión: {order.coverage_label}\n• Dirección: {_address_line(order)}\n\n¿Está todo bien?",
+                           [("prefill_ok", "Todo bien"), ("exams_edit", "Corregir exámenes"),
+                            ("prefill_change", "Cambiar datos")])
+    if unclear:
+        return bot.buttons(f"Estos son tus exámenes:\n{listing}{notes}\n\n¿Está bien?",
+                           [("exams_ok", "Sí, continuar"), ("exams_edit", "Quitar o agregar")])
+    rows = _coverage_rows(conversation.lab) + [("exams_edit", "Corregir exámenes")]
+    bot.choices(f"Estos son tus exámenes:\n{listing}\n\n¿Cuál es tu previsión de salud? "
+                "Si falta o sobra un examen, elige «Corregir exámenes».", "Elegir", rows)
+
+
+def _prefill_ready(order):
+    """Coverage and a reachable address copied from the patient's last booking, ready to quote."""
+    return (order.details_prefilled and order.coverage_id is not None and bool(order.address)
+            and order.visit_fee_clp is not None and (order.coverage.kind != "isapre" or bool(order.isapre)))
+
+
+def _address_line(order):
+    return f"{order.address}, {order.apartment}" if order.apartment else order.address
+
+
+def _clear_details(order):
+    order.coverage, order.isapre = None, ""
+    for name in services.ADDRESS_FIELDS:
+        setattr(order, name, None if name in ("latitude", "longitude", "distance_km") else "")
+    order.visit_fee_clp = None
+    order.details_prefilled = False
+    order.save(update_fields=["coverage", "isapre", "visit_fee_clp", "details_prefilled", *services.ADDRESS_FIELDS])
+
+
+def _names_coverage(lab, text):
+    typed = normalize(text)
+    return bool(_match_isapre(text)) or any(typed == normalize(c.name)
+                                             for c in Coverage.objects.filter(lab=lab, active=True))
 
 
 def _review_exams(bot, conversation, incoming, fresh):
@@ -224,6 +260,15 @@ def _review_exams(bot, conversation, incoming, fresh):
         return _read_order(bot, conversation, incoming)
     if incoming.kind == "reply" and incoming.reply_id == "exams_ok":
         return _ask_coverage(bot, conversation)
+    if incoming.kind == "reply" and incoming.reply_id == "prefill_ok" and _prefill_ready(conversation.order):
+        return _send_quote(bot, conversation, found=_address_line(conversation.order))
+    if incoming.kind == "reply" and incoming.reply_id == "prefill_change":
+        _clear_details(conversation.order)
+        return _ask_coverage(bot, conversation)
+    if incoming.kind == "reply" and incoming.reply_id.startswith("cov_"):
+        return _await_coverage(bot, conversation, incoming, fresh)
+    if incoming.kind == "text" and _names_coverage(conversation.lab, incoming.text):
+        return _await_coverage(bot, conversation, incoming, fresh)
     if incoming.kind == "reply" and incoming.reply_id == "exams_edit":
         return bot.text("Para quitar un examen, escribe «quitar» y su número, por ejemplo: quitar 2. "
                         "Para agregar uno, escribe su nombre.")
@@ -241,10 +286,13 @@ def _review_exams(bot, conversation, incoming, fresh):
     _add_typed_exams(bot, conversation, incoming.text)
 
 
+def _coverage_rows(lab):
+    return [(f"cov_{c.pk}", c.name) for c in Coverage.objects.filter(lab=lab, active=True)]
+
+
 def _ask_coverage(bot, conversation):
     conversation.state = State.AWAIT_COVERAGE
-    rows = [(f"cov_{c.pk}", c.name) for c in Coverage.objects.filter(lab=conversation.lab, active=True)]
-    bot.choices("¿Cuál es tu sistema previsional de salud?", "Elegir", rows)
+    bot.choices("¿Cuál es tu sistema previsional de salud?", "Elegir", _coverage_rows(conversation.lab))
 
 
 def _match_isapre(text):
@@ -324,8 +372,9 @@ def _await_location(bot, conversation, incoming, fresh):
     lab = conversation.lab
     if incoming.kind == "location" and incoming.latitude is not None:
         _set_point(order, lab, incoming.latitude, incoming.longitude)
-        order.address_place_id = ""
-        order.save(update_fields=["latitude", "longitude", "distance_km", "visit_fee_clp", "address_place_id"])
+        order.address_place_id = order.apartment = order.address_notes = ""
+        order.save(update_fields=["latitude", "longitude", "distance_km", "visit_fee_clp", "address_place_id",
+                                  "apartment", "address_notes"])
         if order.visit_fee_clp is None:
             return _out_of_range(bot, conversation)
         conversation.state = State.AWAIT_ADDRESS
@@ -340,10 +389,12 @@ def _typed_address(bot, conversation, text):
     order = conversation.order
     lab = conversation.lab
     order.address = text
+    order.apartment = order.address_notes = ""
     if not settings.GOOGLE_MAPS_SERVER_KEY:
         order.latitude = order.longitude = order.distance_km = None
         order.visit_fee_clp = visit_fee(lab, None)
-        order.save(update_fields=["address", "latitude", "longitude", "distance_km", "visit_fee_clp"])
+        order.save(update_fields=["address", "latitude", "longitude", "distance_km", "visit_fee_clp", "apartment",
+                                  "address_notes"])
         return _send_quote(bot, conversation)
     place = geocode(text, lab)
     if place is None:
@@ -352,21 +403,31 @@ def _typed_address(bot, conversation, text):
     _set_point(order, lab, place.latitude, place.longitude)
     order.address_place_id = place.place_id
     order.save(update_fields=["address", "address_place_id", "latitude", "longitude", "distance_km",
-                              "visit_fee_clp"])
+                              "visit_fee_clp", "apartment", "address_notes"])
     if order.visit_fee_clp is None:
         return _out_of_range(bot, conversation)
+    if PRECISE_PLACE_TYPES & set(place.types):
+        return _send_quote(bot, conversation, found=place.address)
     conversation.state = State.CONFIRM_ADDRESS
     distance = f" ({order.distance_km:.1f} km del laboratorio)".replace(".", ",") if order.distance_km is not None else ""
     bot.buttons(f"Encontré esta dirección:\n{place.address}{distance}\n\n¿Es correcta?",
                 [("address_ok", "Sí, es correcta"), ("address_retry", "No, corregir")])
 
 
+def _wants_new_address(incoming):
+    return incoming.kind == "text" and "cambiar direccion" in normalize(incoming.text)
+
+
+def _ask_address_again(bot, conversation):
+    conversation.state = State.AWAIT_LOCATION
+    bot.text("Escribe la dirección de nuevo, con calle, número y comuna, o envíame tu ubicación con el botón.")
+
+
 def _confirm_address(bot, conversation, incoming, fresh):
     if incoming.kind == "reply" and incoming.reply_id == "address_ok":
         return _send_quote(bot, conversation)
     if incoming.kind == "reply" and incoming.reply_id == "address_retry":
-        conversation.state = State.AWAIT_LOCATION
-        return bot.text("Escribe la dirección de nuevo, con calle, número y comuna, o envíame tu ubicación con el botón.")
+        return _ask_address_again(bot, conversation)
     if incoming.kind == "text" and incoming.text.strip():
         return _typed_address(bot, conversation, incoming.text.strip()[:300])
     if incoming.kind == "location" and incoming.latitude is not None:
@@ -384,7 +445,7 @@ def _await_address(bot, conversation, incoming, fresh):
     _send_quote(bot, conversation)
 
 
-def _send_quote(bot, conversation):
+def _send_quote(bot, conversation, found=""):
     order = conversation.order
     exams = list(order.selected_exams())
     quote = services.build_quote(exams, order.coverage, order.visit_fee_clp)
@@ -395,8 +456,9 @@ def _send_quote(bot, conversation):
     lines.append(f"• Visita a domicilio{distance}: {clp(quote.visit_fee_clp)}")
     prep_lines = [f"• Ayuno de {prep.fasting_hours} horas. Puedes tomar agua." if prep.fasting_hours
                   else "• No necesitas ayuno."] + [f"• {text}" for text in prep.instructions]
+    place = (f"\n\nVisita en: {found}. Si no es correcta, escribe «cambiar dirección»." if found else "")
     bot.text(f"Tu cotización con {order.coverage_label}:\n" + "\n".join(lines) + f"\n*Total: {clp(quote.total_clp)}*"
-             + "\n\nCómo prepararte:\n" + "\n".join(prep_lines))
+             + "\n\nCómo prepararte:\n" + "\n".join(prep_lines) + place)
     logger.info("WhatsApp ...%s: quote sent for order %s, total %s", conversation.phone[-4:], order.public_id,
                 quote.total_clp)
     _ask_day(bot, conversation)
@@ -418,6 +480,8 @@ def _ask_day(bot, conversation):
 
 
 def _await_day(bot, conversation, incoming, fresh):
+    if _wants_new_address(incoming):
+        return _ask_address_again(bot, conversation)
     if incoming.kind == "reply" and incoming.reply_id.startswith("day_"):
         chosen = incoming.reply_id.removeprefix("day_")
         day = next((d for d in slots.available_slots(conversation.lab, exclude_order=conversation.order,
@@ -450,6 +514,8 @@ def _ask_slot(bot, conversation, day):
 
 def _await_slot(bot, conversation, incoming, fresh):
     order = conversation.order
+    if _wants_new_address(incoming):
+        return _ask_address_again(bot, conversation)
     if incoming.kind == "reply" and incoming.reply_id.startswith("slot_"):
         start = slots.parse_slot(incoming.reply_id.removeprefix("slot_"))
         if start and slots.book(order, start):
