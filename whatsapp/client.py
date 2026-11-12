@@ -53,6 +53,13 @@ class MetaClient:
             "action": {"button": button_label[:20], "sections": [{"rows": [_row(*row) for row in rows[:10]]}]},
         }})
 
+    def send_template(self, to, name, language, parameters):
+        return self._send(to, {"type": "template", "template": {
+            "name": name,
+            "language": {"code": language},
+            "components": [{"type": "body", "parameters": [{"type": "text", "text": p} for p in parameters]}],
+        }})
+
     def request_location(self, to, body):
         return self._send(to, {"type": "interactive", "interactive": {
             "type": "location_request_message",
@@ -93,6 +100,10 @@ class ConsoleClient:
         self._record(to, "list", body=body, rows=rows)
         options = "\n".join(f"      [{row[0]}] {' '.join(row[1:])}" for row in rows)
         self.output(f"\n[bot] {body}\n      list ({button_label}):\n{options}")
+
+    def send_template(self, to, name, language, parameters):
+        self._record(to, "template", name=name, language=language, parameters=parameters)
+        self.output(f"\n[bot] template {name} ({language}): {parameters}")
 
     def request_location(self, to, body):
         self._record(to, "location_request", body=body)

@@ -372,6 +372,12 @@ class LateDeliveryAndReminderTests(TestCase):
         self.quiet_conversation(self.at(10), self.at(10, 1), state=Conversation.State.DONE)
         self.assertEqual(send_reminders(self.at(12), client=self.client_wa), 0)
 
+    def test_no_reminder_on_weekends(self):
+        from whatsapp.reminders import send_reminders
+        self.quiet_conversation(self.at(10, day=24), self.at(10, 1, day=24))
+        self.assertEqual(send_reminders(self.at(12, day=24), client=self.client_wa), 0)
+        self.assertEqual(send_reminders(self.at(12, day=25), client=self.client_wa), 0)
+
     def test_no_reminder_when_the_patient_spoke_last(self):
         from whatsapp.reminders import send_reminders
         self.quiet_conversation(self.at(10, 5), self.at(10))
@@ -382,3 +388,79 @@ class LateDeliveryAndReminderTests(TestCase):
         conversation = self.quiet_conversation(self.at(10), self.at(10, 1), state=Conversation.State.AWAIT_SLOT)
         conversation.order = Order.objects.create(lab=self.lab)
         self.assertIn("https://biodata.lab.test/order/", reminder_text(conversation))
+
+
+@override_settings(LAB_URL_TEMPLATE="https://{slug}.lab.test", WHATSAPP_VISIT_REMINDER_TEMPLATE="visit_reminder")
+class VisitReminderTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", stdout=open("/dev/null", "w"))
+        cls.lab = Lab.objects.get(slug="biodata")
+        Lab.objects.filter(pk=cls.lab.pk).update(whatsapp_phone_number_id="123")
+
+    def setUp(self):
+        self.client_wa = ConsoleClient(output=lambda *_: None)
+
+    def at(self, day, hour, minute=0):
+        from datetime import datetime
+        from django.utils import timezone
+        return timezone.make_aware(datetime(2026, 10, day, hour, minute))
+
+    def visit(self, day, hour=9, booked=None, **fields):
+        return Order.objects.create(lab=self.lab, contact_phone="9 1111 2222", slot_start=self.at(day, hour),
+                                    booked_at=booked or self.at(19, 10), **fields)
+
+    def send(self, now):
+        from whatsapp.visit_reminders import send_visit_reminders
+        return send_visit_reminders(now, client=self.client_wa)
+
+    def test_evening_before_once(self):
+        order = self.visit(23)
+        self.assertEqual(self.send(self.at(22, 17, 50)), 0)
+        self.assertEqual(self.send(self.at(22, 18, 0)), 1)
+        message = self.client_wa.sent[-1]
+        self.assertEqual((message["to"], message["name"]), ("56911112222", "visit_reminder"))
+        self.assertEqual(message["parameters"][1], "mañana, viernes 23 de octubre, entre 09:00 y 10:00")
+        self.assertIn(str(order.public_id), message["parameters"][3])
+        self.assertEqual(self.send(self.at(22, 18, 10)), 0)
+
+    def test_friday_covers_the_weekend_and_monday_and_weekends_send_nothing(self):
+        self.visit(24)
+        self.visit(26)
+        self.assertEqual(self.send(self.at(22, 18)), 0)
+        self.assertEqual(self.send(self.at(24, 18)), 0)
+        self.assertEqual(self.send(self.at(23, 18)), 2)
+        self.assertIn("el lunes 26 de octubre, entre 09:00 y 10:00", [m["parameters"][1] for m in self.client_wa.sent])
+
+    def test_skips_cancelled_recent_and_labs_without_whatsapp(self):
+        self.visit(23, visit_status=Order.Visit.CANCELLED)
+        self.visit(23, booked=self.at(22, 17))
+        self.assertEqual(self.send(self.at(22, 18, 30)), 0)
+        self.assertEqual(self.send(self.at(22, 19, 5)), 1)
+        Lab.objects.filter(pk=self.lab.pk).update(whatsapp_phone_number_id="")
+        self.visit(23, hour=11)
+        self.assertEqual(self.send(self.at(22, 19, 30)), 0)
+
+    @override_settings(WHATSAPP_VISIT_REMINDER_TEMPLATE="")
+    def test_off_without_a_template(self):
+        self.visit(23)
+        self.assertEqual(self.send(self.at(22, 18, 30)), 0)
+
+    def test_fasting_line(self):
+        from catalog.models import Exam
+        from orders.models import OrderLine
+        from whatsapp.visit_reminders import parameters
+        exam = Exam.objects.filter(lab=self.lab, fasting_hours__gt=0).first()
+        order = self.visit(23)
+        OrderLine.objects.create(order=order, exam=exam, selected=True, raw_text=exam.name)
+        line = parameters(order, self.at(22, 18).date())[2]
+        self.assertEqual(line, f"Recuerda el ayuno de {exam.fasting_hours} horas: deja de comer a las "
+                               f"{slots.fasting_start(order.slot_start, exam.fasting_hours)}.")
+
+    def test_rebooking_sends_the_reminder_again(self):
+        order = self.visit(23)
+        self.send(self.at(22, 18))
+        order.refresh_from_db()
+        self.assertIsNotNone(order.visit_reminder_sent_at)
+        Order.objects.filter(pk=order.pk).update(visit_reminder_sent_at=None)  # what slots.book does on a new hour
+        self.assertEqual(self.send(self.at(22, 18, 30)), 1)

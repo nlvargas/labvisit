@@ -150,7 +150,9 @@ def book(order, start, now=None):
         order.booked_at = timezone.now()
         order.visit_status = Order.Visit.REQUESTED
         order.visit_discount_clp = offer.discount_clp
-        order.save(update_fields=["slot_start", "booked_at", "visit_status", "visit_discount_clp", "service_minutes"])
+        order.visit_reminder_sent_at = None
+        order.save(update_fields=["slot_start", "booked_at", "visit_status", "visit_discount_clp", "service_minutes",
+                                  "visit_reminder_sent_at"])
         day = timezone.localdate(start)
         planner.replan(lab, day, planner.RoutePlan.Trigger.BOOKING, now=now)
         if previous and timezone.localdate(previous) != day:

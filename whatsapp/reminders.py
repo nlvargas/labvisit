@@ -1,5 +1,5 @@
 """One reminder per silence: when the bot spoke last, the patient has been quiet for a while and the booking is
-unfinished. Never at night and never outside Meta's 24 hour customer service window."""
+unfinished. Never at night, never on weekends and never outside Meta's 24 hour customer service window."""
 import logging
 from datetime import timedelta
 
@@ -40,7 +40,8 @@ def due(now=None):
     """Conversations that should get their reminder now."""
     now = now or timezone.now()
     start, end = settings.WHATSAPP_REMINDER_HOURS
-    if not start <= timezone.localtime(now).hour < end:
+    local = timezone.localtime(now)
+    if local.weekday() not in settings.WHATSAPP_REMINDER_WEEKDAYS or not start <= local.hour < end:
         return Conversation.objects.none()
     quiet_since = now - timedelta(minutes=settings.WHATSAPP_REMINDER_AFTER_MINUTES)
     window = now - timedelta(hours=settings.WHATSAPP_REMINDER_WINDOW_HOURS)
